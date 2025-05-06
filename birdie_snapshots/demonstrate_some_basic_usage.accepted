@@ -1,0 +1,11 @@
+---
+version: 1.2.7
+title: Demonstrate some basic usage
+file: ./test/drift_test.gleam
+test_name: example_use_test
+---
+Hello, World!
+0: Wibble!
+It's now: 10
+15: Wobble
+It's now: 20
