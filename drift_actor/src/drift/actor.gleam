@@ -93,7 +93,7 @@ fn handle_message(
 
   let timer =
     option.map(due_time, fn(due_time) {
-      process.send_after(state.mailbox, int.max(now, due_time - now), Tick)
+      process.send_after(state.mailbox, int.max(0, due_time - now), Tick)
     })
 
   list.each(outputs, state.handle_output(state.io_state, _))
