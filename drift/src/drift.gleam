@@ -21,7 +21,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-/// A monotonically increasing timestamp (we don't care about the unit).
+/// A monotonically increasing timestamp in milliseconds.
 pub type Timestamp =
   Int
 
