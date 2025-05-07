@@ -2,7 +2,7 @@ import drift.{type Step, type Timestamp}
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None}
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import gleam/result
 
@@ -87,8 +87,13 @@ fn handle_message(
   let now = now()
   let #(stepper, due_time, outputs) = case message {
     Tick -> drift.tick(state.stepper, now, state.handle_timer)
-    HandleInput(input) ->
+    HandleInput(input) -> {
+      case state.timer {
+        Some(timer) -> process.cancel_timer(timer)
+        None -> process.TimerNotFound
+      }
       drift.step(state.stepper, now, input, state.handle_input)
+    }
   }
 
   let timer =
