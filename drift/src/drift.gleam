@@ -45,6 +45,33 @@ pub opaque type Step(state, timer, output) {
   Step(state: state, timers: List(Timer(timer)), outputs: List(output))
 }
 
+/// A wrapper for operations that can terminate, 
+/// either normally, or with an error.
+/// A final state is always produced, even when stopping.
+pub type Next(a, e) {
+  Continue(state: a)
+  Stop(state: a)
+  StopWithError(state: a, error: e)
+}
+
+// Applies a function to the state of an instance of `Next`.
+pub fn map_next(next: Next(a, e), mapper: fn(a) -> b) -> Next(b, e) {
+  case next {
+    Continue(a) -> Continue(mapper(a))
+    Stop(a) -> Stop(mapper(a))
+    StopWithError(a, e) -> StopWithError(mapper(a), e)
+  }
+}
+
+// Applies a function to the error of an instance of `Next`, if any.
+pub fn map_next_error(next: Next(a, b), mapper: fn(b) -> c) -> Next(a, c) {
+  case next {
+    Continue(a) -> Continue(a)
+    Stop(a) -> Stop(a)
+    StopWithError(a, e) -> StopWithError(a, mapper(e))
+  }
+}
+
 /// Create a new stepper with the initial state and timers.
 pub fn start(
   state: s,

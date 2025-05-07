@@ -1,4 +1,7 @@
-import drift.{type Step, type Timestamp}
+import drift.{
+  type Next, type Step, type Timestamp, Continue, Stop, StopWithError,
+}
+import gleam/dynamic
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
 import gleam/list
@@ -26,13 +29,16 @@ pub fn start(
   driver: IoDriver(io, i, o),
   timeout: Int,
   state: s,
-  handle_input: fn(Step(s, t, o), Timestamp, i) -> Step(s, t, o),
+  handle_input: fn(Step(s, t, o), Timestamp, i) -> Next(Step(s, t, o), e),
   handle_timer: fn(Step(s, t, o), Timestamp, t) -> Step(s, t, o),
 ) -> Result(Subject(i), actor.StartError) {
   actor.new_with_initialiser(timeout, fn(mailbox) {
     let io_state = driver.init()
-
     let #(stepper, _) = drift.start(state, [])
+    let handle_input = fn(s, t, i) {
+      handle_input(s, t, i) |> drift.map_next_error(dynamic.from)
+    }
+
     let state =
       State(
         stepper:,
@@ -75,7 +81,8 @@ type State(s, io, i, t, o) {
     io_state: io,
     mailbox: Subject(Msg(i)),
     handle_output: fn(io, o) -> Nil,
-    handle_input: fn(Step(s, t, o), Timestamp, i) -> Step(s, t, o),
+    handle_input: fn(Step(s, t, o), Timestamp, i) ->
+      Next(Step(s, t, o), dynamic.Dynamic),
     handle_timer: fn(Step(s, t, o), Timestamp, t) -> Step(s, t, o),
   )
 }
@@ -85,24 +92,36 @@ fn handle_message(
   message: Msg(i),
 ) -> actor.Next(State(s, io, i, t, o), Msg(i)) {
   let now = now()
-  let #(stepper, due_time, outputs) = case message {
-    Tick -> drift.tick(state.stepper, now, state.handle_timer)
+  let next = case message {
+    Tick -> Continue(drift.tick(state.stepper, now, state.handle_timer))
+
     HandleInput(input) -> {
       case state.timer {
         Some(timer) -> process.cancel_timer(timer)
         None -> process.TimerNotFound
       }
-      drift.step(state.stepper, now, input, state.handle_input)
+
+      drift.begin_step(state.stepper)
+      |> state.handle_input(now, input)
+      |> drift.map_next(drift.end_step)
     }
   }
 
-  let timer =
-    option.map(due_time, fn(due_time) {
-      process.send_after(state.mailbox, int.max(0, due_time - now), Tick)
-    })
+  let #(stepper, due_time, outputs) = next.state
+
+  let timer = case next, due_time {
+    Continue(..), Some(due_time) ->
+      Some(process.send_after(state.mailbox, int.max(0, due_time - now), Tick))
+    _, _ -> None
+  }
 
   list.each(outputs, state.handle_output(state.io_state, _))
-  actor.continue(State(..state, stepper:, timer:))
+
+  case next {
+    Continue(_) -> actor.continue(State(..state, stepper:, timer:))
+    StopWithError(_, reason) -> actor.Stop(process.Abnormal(reason))
+    Stop(_) -> actor.stop()
+  }
 }
 
 @external(erlang, "drift_actor_external", "now")

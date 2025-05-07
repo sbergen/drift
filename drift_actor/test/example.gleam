@@ -32,9 +32,20 @@ pub fn main() -> Nil {
   process.sleep(5000)
   process.send(actor, Stop)
 
-  // TODO: The actor needs to be also controlled somehow :/
-  // We can't make it actually stop, so we also can't wait for it.
-  process.sleep(100)
+  case process.subject_owner(actor) {
+    Ok(actor_pid) -> wait_for_process(actor_pid)
+    Error(_) -> Nil
+  }
+}
+
+fn wait_for_process(pid: process.Pid) -> Nil {
+  case process.is_alive(pid) {
+    False -> Nil
+    True -> {
+      process.sleep(10)
+      wait_for_process(pid)
+    }
+  }
 }
 
 fn poll_input(output: Subject(String)) -> Nil {
@@ -71,17 +82,23 @@ type Event {
 type Step =
   drift.Step(List(String), Event, Output)
 
-fn handle_input(step: Step, now: Timestamp, input: Input) -> Step {
+fn handle_input(
+  step: Step,
+  now: Timestamp,
+  input: Input,
+) -> drift.Next(Step, Nil) {
   case input {
     UserEntered(text) ->
       step
       |> drift.map_state(list.prepend(_, text))
       |> drift.start_timer(drift.Timer(now + 1000, TimedPrint(text)))
+      |> drift.Continue
     Stop ->
       step
       |> drift.map_output(fn(lines) {
         Print(lines |> list.reverse |> string.join("\n"))
       })
+      |> drift.Stop
   }
 }
 
