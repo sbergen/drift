@@ -1,6 +1,6 @@
 import drift.{type Timestamp}
 import drift/actor
-import gleam/erlang/process.{type Selector, type Subject}
+import gleam/erlang/process.{type Subject}
 import gleam/io
 import gleam/list
 import gleam/string
@@ -11,17 +11,11 @@ import input
 pub fn main() -> Nil {
   let assert Ok(actor) =
     actor.using_io(
-      fn() {
-        let inputs = process.new_subject()
-        let input_pid = process.spawn(fn() { poll_input(inputs) })
-
-        let inputs =
-          process.new_selector()
-          |> process.select_map(inputs, UserEntered)
-
-        IoDriver(inputs, io.println, input_pid)
+      new_io_driver,
+      fn(driver) {
+        process.new_selector()
+        |> process.select_map(driver.inputs, UserEntered)
       },
-      fn(driver) { driver.inputs },
       fn(driver, output) {
         let Print(text) = output
         driver.output(text)
@@ -48,6 +42,12 @@ fn wait_for_process(pid: process.Pid) -> Nil {
   }
 }
 
+fn new_io_driver() -> IoDriver {
+  let inputs = process.new_subject()
+  process.spawn(fn() { poll_input(inputs) })
+  IoDriver(inputs, io.println)
+}
+
 fn poll_input(output: Subject(String)) -> Nil {
   let assert Ok(text) = input.input("> ")
   process.send(output, text)
@@ -55,11 +55,7 @@ fn poll_input(output: Subject(String)) -> Nil {
 }
 
 type IoDriver {
-  IoDriver(
-    inputs: Selector(Input),
-    output: fn(String) -> Nil,
-    input_pid: process.Pid,
-  )
+  IoDriver(inputs: Subject(String), output: fn(String) -> Nil)
 }
 
 // Everything below is agnostic of I/O and timer implementations.
