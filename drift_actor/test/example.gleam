@@ -1,8 +1,9 @@
-import drift.{type Timestamp}
+import drift.{type Deferred, type Timestamp}
 import drift/actor
-import gleam/erlang/process.{type Subject}
+import gleam/erlang/process.{type Selector}
 import gleam/io
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import input
 
@@ -10,20 +11,36 @@ import input
 
 pub fn main() -> Nil {
   let assert Ok(actor) =
-    actor.using_io(
-      new_io_driver,
-      fn(driver) {
-        process.new_selector()
-        |> process.select_map(driver.inputs, UserEntered)
-      },
-      fn(driver, output) {
-        let Print(text) = output
-        driver.output(text)
-      },
-    )
-    |> actor.start(1000, [], handle_input, handle_timer)
+    actor.using_io(new_io_driver, fn(driver, output) {
+      case output {
+        Prompt(prompt) -> {
+          // Simulate async I/O
+          let reply_to = process.new_subject()
+          process.spawn(fn() {
+            let assert Ok(result) = input.input(prompt)
+            process.send(reply_to, result)
+          })
 
-  process.sleep(5000)
+          actor.InputSelectorChanged(
+            driver,
+            process.new_selector()
+              |> process.select_map(reply_to, UserEntered),
+          )
+        }
+
+        Print(text) -> {
+          io.println(text)
+          actor.IoOk(driver)
+        }
+      }
+    })
+    |> actor.start(1000, new_state(), handle_input)
+
+  let assert Ok(_) =
+    actor.call_forever(actor, StartPrompt("What's your name? ", _))
+  let assert Ok(_) =
+    actor.call_forever(actor, StartPrompt("Who's the best? ", _))
+
   process.send(actor, Stop)
 
   case process.subject_owner(actor) {
@@ -42,64 +59,92 @@ fn wait_for_process(pid: process.Pid) -> Nil {
   }
 }
 
-fn new_io_driver() -> IoDriver {
-  let inputs = process.new_subject()
-  process.spawn(fn() { poll_input(inputs) })
-  IoDriver(inputs, io.println)
-}
-
-fn poll_input(output: Subject(String)) -> Nil {
-  let assert Ok(text) = input.input("> ")
-  process.send(output, text)
-  poll_input(output)
+fn new_io_driver() -> #(IoDriver, Selector(Input)) {
+  #(IoDriver(io.println), process.new_selector())
 }
 
 type IoDriver {
-  IoDriver(inputs: Subject(String), output: fn(String) -> Nil)
+  IoDriver(output: fn(String) -> Nil)
 }
 
 // Everything below is agnostic of I/O and timer implementations.
 // It will echo everything with a one second delay (yes, it's ugly)
 // and print all lines when Stop is triggered.
 
+type State {
+  State(
+    completed_answers: List(String),
+    active_prompt: Option(Deferred(Result(Nil, String))),
+  )
+}
+
 type Input {
+  StartPrompt(String, Deferred(Result(Nil, String)))
   UserEntered(String)
+  Timeout
   Stop
 }
 
 type Output {
+  Prompt(String)
   Print(String)
 }
 
-type Event {
-  TimedPrint(String)
+type Step =
+  drift.Step(State, Input, Output, Nil)
+
+fn new_state() -> State {
+  State([], None)
 }
 
-type Step =
-  drift.Step(List(String), Event, Output)
-
-fn handle_input(
-  step: Step,
-  now: Timestamp,
-  input: Input,
-) -> drift.Next(Step, Nil) {
+fn handle_input(step: Step, now: Timestamp, input: Input) -> Step {
   case input {
     UserEntered(text) ->
       step
-      |> drift.map_state(list.prepend(_, text))
-      |> drift.start_timer(drift.Timer(now + 1000, TimedPrint(text)))
-      |> drift.Continue
+      |> drift.update_state(fn(state) {
+        case state.active_prompt {
+          Some(deferred) -> drift.resolve(step, deferred, Ok(Nil))
+          None -> panic as "No deferred value to resolve!"
+        }
+        State(..state, completed_answers: [text, ..state.completed_answers])
+      })
+      |> drift.cancel_all_timers()
+
+    StartPrompt(prompt, result) ->
+      step
+      |> drift.output(Prompt(prompt))
+      |> drift.start_timer(drift.Timer(now + 2000, Timeout))
+      |> drift.update_state(fn(state) {
+        case state.active_prompt {
+          Some(deferred) ->
+            drift.resolve(step, deferred, Error("Canceled by new prompt!"))
+          None -> step
+        }
+        State(..state, active_prompt: Some(result))
+      })
+
     Stop ->
       step
-      |> drift.map_output(fn(lines) {
-        Print(lines |> list.reverse |> string.join("\n"))
+      |> drift.output(Print("Your answers were:"))
+      |> drift.output_from_state(fn(state) {
+        Print(
+          state.completed_answers
+          |> list.reverse
+          |> string.join("\n"),
+        )
       })
-      |> drift.Stop
-  }
-}
+      |> drift.stop()
 
-fn handle_timer(step: Step, _now: Timestamp, event: Event) -> Step {
-  case event {
-    TimedPrint(text) -> drift.output(step, Print(text))
+    Timeout ->
+      step
+      |> drift.output(Print("Too slow!"))
+      |> drift.update_state(fn(state) {
+        case state.active_prompt {
+          Some(deferred) -> drift.resolve(step, deferred, Error("Stopping!"))
+          None -> step
+        }
+        State(..state, active_prompt: None)
+      })
+      |> drift.stop()
   }
 }

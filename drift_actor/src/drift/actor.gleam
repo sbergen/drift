@@ -1,7 +1,7 @@
 import drift.{
-  type Next, type Step, type Timestamp, Continue, Stop, StopWithError,
+  type Deferred, type Step, type Timestamp, Continue, Stop, StopWithError,
 }
-import gleam/dynamic
+import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
 import gleam/list
@@ -9,56 +9,61 @@ import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import gleam/result
 
-pub opaque type IoDriver(s, i, o) {
+pub type IoResult(state, input) {
+  IoOk(state)
+  FatalIoError(Dynamic)
+  InputSelectorChanged(state, Selector(input))
+}
+
+pub opaque type IoDriver(state, input, output) {
   IoDriver(
-    init: fn() -> s,
-    input_selector: fn(s) -> Selector(i),
-    output_handler: fn(s, o) -> Nil,
+    new: fn() -> #(state, Selector(input)),
+    handle_output: fn(state, output) -> IoResult(state, input),
   )
 }
 
 pub fn using_io(
-  init: fn() -> io,
-  input_selector: fn(io) -> Selector(i),
-  output_handler: fn(io, o) -> Nil,
-) -> IoDriver(io, i, o) {
-  IoDriver(init, input_selector, output_handler)
+  new: fn() -> #(state, Selector(input)),
+  handle_output: fn(state, output) -> IoResult(state, input),
+) -> IoDriver(state, input, output) {
+  IoDriver(new, handle_output)
 }
 
 pub fn start(
-  driver: IoDriver(io, i, o),
+  io_driver: IoDriver(io, i, o),
   timeout: Int,
   state: s,
-  handle_input: fn(Step(s, t, o), Timestamp, i) -> Next(Step(s, t, o), e),
-  handle_timer: fn(Step(s, t, o), Timestamp, t) -> Step(s, t, o),
+  handle_input: fn(Step(s, i, o, e), Timestamp, i) -> Step(s, i, o, e),
 ) -> Result(Subject(i), actor.StartError) {
-  actor.new_with_initialiser(timeout, fn(mailbox) {
-    let io_state = driver.init()
-    let #(stepper, _) = drift.start(state, [])
-    let handle_input = fn(s, t, i) {
-      handle_input(s, t, i) |> drift.map_next_error(dynamic.from)
-    }
+  actor.new_with_initialiser(timeout, fn(self) {
+    let #(io_state, input_selector) = io_driver.new()
+
+    let stepper = drift.start(state)
+    let handle_input = fn(s, t, i) { handle_input(s, t, i) }
+
+    let inputs = process.new_subject()
+    let base_selector =
+      process.new_selector()
+      |> process.select_map(inputs, HandleInput)
+      |> process.select(self)
 
     let state =
       State(
         stepper:,
         timer: None,
         io_state:,
-        mailbox:,
-        handle_output: driver.output_handler,
+        io_driver:,
+        self:,
+        base_selector:,
         handle_input:,
-        handle_timer:,
       )
-
-    let inputs = process.new_subject()
 
     let init =
       actor.initialised(state)
       |> actor.selecting(
-        driver.input_selector(io_state)
+        input_selector
         |> process.map_selector(HandleInput)
-        |> process.select_map(inputs, HandleInput)
-        |> process.select(mailbox),
+        |> process.merge_selector(base_selector),
       )
       |> actor.returning(inputs)
 
@@ -69,31 +74,55 @@ pub fn start(
   |> result.map(fn(init) { init.data })
 }
 
+pub fn call_forever(
+  subject: Subject(message),
+  make_request: fn(Deferred(reply)) -> message,
+) -> reply {
+  process.call_forever(subject, fn(reply) {
+    make_request(drift.defer(process.send(reply, _)))
+  })
+}
+
+pub fn call(
+  subject: Subject(message),
+  waiting timeout: Int,
+  sending make_request: fn(Deferred(reply)) -> message,
+) -> reply {
+  process.call(subject, timeout, fn(reply) {
+    make_request(drift.defer(process.send(reply, _)))
+  })
+}
+
+//==== Privates ====//
+
 type Msg(i) {
   Tick
   HandleInput(i)
 }
 
-type State(s, io, i, t, o) {
+type State(state, io, input, output, error) {
   State(
-    stepper: drift.Stepper(s, t),
+    stepper: drift.Stepper(state, input),
     timer: Option(process.Timer),
     io_state: io,
-    mailbox: Subject(Msg(i)),
-    handle_output: fn(io, o) -> Nil,
-    handle_input: fn(Step(s, t, o), Timestamp, i) ->
-      Next(Step(s, t, o), dynamic.Dynamic),
-    handle_timer: fn(Step(s, t, o), Timestamp, t) -> Step(s, t, o),
+    io_driver: IoDriver(io, input, output),
+    self: Subject(Msg(input)),
+    base_selector: Selector(Msg(input)),
+    handle_input: fn(Step(state, input, output, error), Timestamp, input) ->
+      Step(state, input, output, error),
   )
 }
 
 fn handle_message(
-  state: State(s, io, i, t, o),
+  state: State(s, io, i, o, e),
   message: Msg(i),
-) -> actor.Next(State(s, io, i, t, o), Msg(i)) {
+) -> actor.Next(State(s, io, i, o, e), Msg(i)) {
+  echo message
   let now = now()
+
+  // Either tick or handle input
   let next = case message {
-    Tick -> Continue(drift.tick(state.stepper, now, state.handle_timer))
+    Tick -> drift.tick(state.stepper, now, state.handle_input)
 
     HandleInput(input) -> {
       case state.timer {
@@ -103,24 +132,68 @@ fn handle_message(
 
       drift.begin_step(state.stepper)
       |> state.handle_input(now, input)
-      |> drift.map_next(drift.end_step)
+      |> drift.end_step()
     }
   }
 
-  let #(stepper, due_time, outputs) = next.state
-
-  let timer = case next, due_time {
-    Continue(..), Some(due_time) ->
-      Some(process.send_after(state.mailbox, int.max(0, due_time - now), Tick))
-    _, _ -> None
-  }
-
-  list.each(outputs, state.handle_output(state.io_state, _))
+  // Apply effects, no matter if stopped or not
+  let io_result =
+    list.fold(next.effects, IoOk(state.io_state), fn(io_state, effect) {
+      use io_state <- bind_io(io_state)
+      case effect {
+        drift.Output(output) -> state.io_driver.handle_output(io_state, output)
+        drift.ResolveDeferred(resolve) -> {
+          resolve()
+          IoOk(io_state)
+        }
+      }
+    })
 
   case next {
-    Continue(_) -> actor.continue(State(..state, stepper:, timer:))
-    StopWithError(_, reason) -> actor.Stop(process.Abnormal(reason))
-    Stop(_) -> actor.stop()
+    Continue(_effects, stepper, due_time) -> {
+      // Start new timer if there's a due time
+      let timer =
+        due_time
+        |> option.map(fn(due_time) {
+          process.send_after(state.self, int.max(0, due_time - now), Tick)
+        })
+
+      let state = State(..state, stepper:, timer:)
+
+      case io_result {
+        IoOk(io_state) -> actor.continue(State(..state, io_state:))
+        InputSelectorChanged(io_state, selector) ->
+          actor.with_selector(
+            actor.continue(State(..state, io_state:)),
+            selector
+              |> process.map_selector(HandleInput)
+              |> process.merge_selector(state.base_selector),
+          )
+        FatalIoError(reason) -> actor.Stop(process.Abnormal(reason))
+      }
+    }
+
+    Stop(_effects) -> actor.stop()
+
+    StopWithError(_effects, reason) ->
+      actor.Stop(process.Abnormal(dynamic.from(reason)))
+  }
+}
+
+// Applies a mapping if not errored, carries over the latest selector
+fn bind_io(
+  result: IoResult(a, i),
+  fun: fn(a) -> IoResult(b, i),
+) -> IoResult(b, i) {
+  case result {
+    IoOk(a) -> fun(a)
+    FatalIoError(e) -> FatalIoError(e)
+    InputSelectorChanged(a, selector) ->
+      case fun(a) {
+        IoOk(b) -> InputSelectorChanged(b, selector)
+        FatalIoError(e) -> FatalIoError(e)
+        InputSelectorChanged(b, s) -> InputSelectorChanged(b, s)
+      }
   }
 }
 

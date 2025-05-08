@@ -17,6 +17,8 @@
 //// 3. `step` is provided for convenience, and takes a function to apply an
 ////    input to a stepper.
 
+// TODO: Docs out of date!!!
+
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -39,158 +41,207 @@ pub opaque type Stepper(state, timer) {
   Stepper(state: state, timers: List(Timer(timer)))
 }
 
+/// Represents a deferred future value that can be resolved later.
+pub opaque type Deferred(a) {
+  Deferred(resolve: fn(a) -> Nil)
+}
+
+pub fn defer(resolve: fn(a) -> Nil) -> Deferred(a) {
+  Deferred(resolve)
+}
+
+pub type Effect(output) {
+  Output(output)
+  ResolveDeferred(fn() -> Nil)
+}
+
 /// An ongoing stepper update, which may update the state, timers,
 /// or produce outputs.
-pub opaque type Step(state, timer, output) {
-  Step(state: state, timers: List(Timer(timer)), outputs: List(output))
+pub opaque type Step(state, input, output, error) {
+  ContinueStep(
+    state: state,
+    timers: List(Timer(input)),
+    effects: List(Effect(output)),
+  )
+  StopStep(error: Option(error), effects: List(Effect(output)))
 }
 
-/// A wrapper for operations that can terminate, 
-/// either normally, or with an error.
-/// A final state is always produced, even when stopping.
-pub type Next(a, e) {
-  Continue(state: a)
-  Stop(state: a)
-  StopWithError(state: a, error: e)
+pub type Next(state, input, output, error) {
+  Continue(
+    effects: List(Effect(output)),
+    state: Stepper(state, input),
+    due_time: Option(Timestamp),
+  )
+  Stop(effects: List(Effect(output)))
+  StopWithError(effects: List(Effect(output)), error: error)
 }
 
-// Applies a function to the state of an instance of `Next`.
-pub fn map_next(next: Next(a, e), mapper: fn(a) -> b) -> Next(b, e) {
-  case next {
-    Continue(a) -> Continue(mapper(a))
-    Stop(a) -> Stop(mapper(a))
-    StopWithError(a, e) -> StopWithError(mapper(a), e)
+/// Returns an updated step by applying a function to the current state within the step.
+/// Does nothing if the step is terminated.
+pub fn update_state(step: Step(s, i, o, e), f: fn(s) -> s) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(state:, ..) as continue ->
+      ContinueStep(..continue, state: f(state))
+    _ -> step
   }
 }
 
-// Applies a function to the error of an instance of `Next`, if any.
-pub fn map_next_error(next: Next(a, b), mapper: fn(b) -> c) -> Next(a, c) {
-  case next {
-    Continue(a) -> Continue(a)
-    Stop(a) -> Stop(a)
-    StopWithError(a, e) -> StopWithError(a, mapper(e))
+/// Returns an updated step with a replaced state.
+/// Does nothing if the step is terminated.
+pub fn replace_state(step: Step(s, i, o, e), state: s) -> Step(s, i, o, e) {
+  update_state(step, fn(_) { state })
+}
+
+/// Starts a timer within a step.
+pub fn start_timer(step: Step(s, i, o, e), timer: Timer(i)) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(timers:, ..) as continue ->
+      ContinueStep(..continue, timers: [timer, ..timers])
+    _ -> step
+  }
+}
+
+/// Returns an updated step with all matching timers canceled.
+/// Does nothing if the step is terminated.
+pub fn cancel_timers(
+  step: Step(s, i, o, e),
+  predicate: fn(Timer(i)) -> Bool,
+) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(timers:, ..) as continue ->
+      ContinueStep(
+        ..continue,
+        timers: list.filter(timers, fn(timer) { !predicate(timer) }),
+      )
+    _ -> step
+  }
+}
+
+/// Returns an updated step with all timers canceled.
+/// Does nothing if the step is terminated.
+pub fn cancel_all_timers(step: Step(s, i, o, e)) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(..) as continue -> ContinueStep(..continue, timers: [])
+    _ -> step
+  }
+}
+
+/// Returns an updated step with an added output.
+/// Does nothing if the step is terminated.
+pub fn output(step: Step(s, i, o, e), output: o) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(effects:, ..) as continue ->
+      ContinueStep(..continue, effects: [Output(output), ..effects])
+    _ -> step
+  }
+}
+
+/// Returns an updated step with multiple added outputs.
+/// Does nothing if the step is terminated.
+pub fn output_many(step: Step(s, i, o, e), outputs: List(o)) -> Step(s, i, o, e) {
+  list.fold(outputs, step, output)
+}
+
+/// Returns an updated step with an added output derived from the state.
+/// Does nothing if the step is terminated.
+pub fn output_from_state(
+  step: Step(s, i, o, e),
+  make_output: fn(s) -> o,
+) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(state:, effects:, ..) as continue ->
+      ContinueStep(..continue, effects: [Output(make_output(state)), ..effects])
+    _ -> step
+  }
+}
+
+/// Returns an updated state that will eventually resolve the deferred value.
+/// Does nothing if the step is terminated.
+pub fn resolve(
+  step: Step(s, i, o, e),
+  deferred: Deferred(a),
+  result: a,
+) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(effects:, ..) as continue -> {
+      let resolve = fn() { deferred.resolve(result) }
+      ContinueStep(..continue, effects: [ResolveDeferred(resolve), ..effects])
+    }
+    _ -> step
+  }
+}
+
+/// Returns a new step that is stopped, and contains the effects of `step`.
+/// If already stopped, the previous error (if any) will not be removed.
+pub fn stop(step: Step(s, i, o, e)) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(effects:, ..) -> StopStep(None, effects)
+    StopStep(error, effects) -> StopStep(error, effects)
+  }
+}
+
+/// Returns a new step that is stopped, and contains the effects of `step`.
+/// If the step is already stopped an contains an error, that error will be kept.
+/// If no error is present, the given error will be set.
+pub fn stop_with_error(step: Step(s, i, o, e), error: e) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(effects:, ..) -> StopStep(None, effects)
+    StopStep(old_error, effects) ->
+      StopStep(option.or(old_error, Some(error)), effects)
   }
 }
 
 /// Create a new stepper with the initial state and timers.
-pub fn start(
+pub fn start_with_timers(
   state: s,
   timers: List(Timer(t)),
 ) -> #(Stepper(s, t), Option(Timestamp)) {
   #(Stepper(state, timers), next_tick(timers))
 }
 
-/// Updates the state within a step by applying a function to the current state.
-pub fn map_state(step: Step(s, t, o), f: fn(s) -> s) -> Step(s, t, o) {
-  Step(..step, state: f(step.state))
-}
-
-/// Replaces the state within a step.
-pub fn replace_state(step: Step(s, t, o), state: s) -> Step(s, t, o) {
-  Step(..step, state:)
-}
-
-/// Extracts the state from a step.
-pub fn read_state(step: Step(s, t, o)) -> s {
-  step.state
-}
-
-/// Starts a timer within a step.
-pub fn start_timer(step: Step(s, t, o), timer: Timer(t)) -> Step(s, t, o) {
-  Step(..step, timers: [timer, ..step.timers])
-}
-
-/// Cancels timers matching the given predicate within a step.
-pub fn cancel_timers(
-  step: Step(s, t, o),
-  predicate: fn(Timer(t)) -> Bool,
-) -> Step(s, t, o) {
-  Step(
-    ..step,
-    timers: list.filter(step.timers, fn(timer) { !predicate(timer) }),
-  )
-}
-
-/// Cancels all timers within a step.
-pub fn cancel_all_timers(step: Step(s, t, o)) -> Step(s, t, o) {
-  Step(..step, timers: [])
-}
-
-/// Adds an output within a step.
-pub fn output(step: Step(s, t, o), output: o) -> Step(s, t, o) {
-  Step(..step, outputs: [output, ..step.outputs])
-}
-
-/// Adds multiple outputs within a step.
-pub fn output_many(step: Step(s, t, o), outputs: List(o)) -> Step(s, t, o) {
-  // TODO: check the list operations below
-  Step(..step, outputs: list.append(list.reverse(outputs), step.outputs))
-}
-
-/// Adds an output derived from the state within a step.
-pub fn map_output(step: Step(s, t, o), make_output: fn(s) -> o) -> Step(s, t, o) {
-  Step(..step, outputs: [make_output(step.state), ..step.outputs])
+pub fn start(state: s) -> Stepper(s, t) {
+  Stepper(state, [])
 }
 
 /// Triggers all expired timers.
 /// Returns the new stepper, next tick due time, if any,
 /// and the list of outputs to apply.
 pub fn tick(
-  state: Stepper(s, t),
+  state: Stepper(s, i),
   now: Timestamp,
-  apply: fn(Step(s, t, o), Timestamp, t) -> Step(s, t, o),
-) -> #(Stepper(s, t), Option(Timestamp), List(o)) {
+  apply: fn(Step(s, i, o, e), Timestamp, i) -> Step(s, i, o, e),
+) -> Next(s, i, o, e) {
   let Stepper(state, timers) = state
   let #(to_trigger, timers) =
     list.partition(timers, fn(timer) { timer.due_time <= now })
 
-  let Step(state, timers, outputs) =
-    to_trigger
-    |> list.sort(fn(a, b) { int.compare(a.due_time, b.due_time) })
-    |> list.fold(Step(state, timers, []), fn(transaction, timer) {
-      apply(transaction, now, timer.data)
-    })
-
-  #(Stepper(state, timers), next_tick(timers), list.reverse(outputs))
+  to_trigger
+  |> list.sort(fn(a, b) { int.compare(a.due_time, b.due_time) })
+  |> list.fold(ContinueStep(state, timers, []), fn(next, timer) {
+    case next {
+      ContinueStep(..) -> apply(next, now, timer.data)
+      other -> other
+    }
+  })
+  |> end_step()
 }
 
 /// Starts a new step to alter the state
-pub fn begin_step(state: Stepper(s, t)) -> Step(s, t, _) {
-  Step(state.state, state.timers, [])
+pub fn begin_step(state: Stepper(s, i)) -> Step(s, i, _, _) {
+  ContinueStep(state.state, state.timers, [])
 }
 
-/// Ends the current step.
-/// Returns the new stepper, next tick due time, if any,
-/// and the list of outputs to apply.
-pub fn end_step(
-  step: Step(s, t, o),
-) -> #(Stepper(s, t), Option(Timestamp), List(o)) {
-  let Step(state, timers, outputs) = step
-  #(Stepper(state, timers), next_tick(timers), list.reverse(outputs))
-}
-
-/// Convenience function for running a step with a single function
-/// taking the state, current time and input.
-pub fn step(
-  state: Stepper(s, t),
-  now: Timestamp,
-  input: i,
-  apply: fn(Step(s, t, o), Timestamp, i) -> Step(s, t, o),
-) -> #(Stepper(s, t), Option(Timestamp), List(o)) {
-  state
-  |> begin_step()
-  |> apply(now, input)
-  |> end_step
-}
-
-/// Convenience function to wrap the state within a tuple
-/// returned by `end_step` or `step`.
-/// Useful when hiding the use of `drift` from outside code.
-pub fn wrap_state(
-  result: #(Stepper(s, t), Option(Timestamp), List(o)),
-  wrap: fn(Stepper(s, t)) -> a,
-) -> #(a, Option(Timestamp), List(o)) {
-  #(wrap(result.0), result.1, result.2)
+/// Ends the current step, yielding the next state.
+pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
+  case step {
+    ContinueStep(state, timers, effects) ->
+      Continue(effects, Stepper(state, timers), next_tick(timers))
+    StopStep(error, effects) ->
+      case error {
+        Some(error) -> StopWithError(effects, error)
+        None -> Stop(effects)
+      }
+  }
 }
 
 /// Gets the next timer due time or `None` if there are no active timers.
