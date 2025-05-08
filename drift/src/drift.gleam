@@ -25,8 +25,8 @@ pub type Timer(t) {
 }
 
 /// Holds the current state and active timers.
-pub opaque type Stepper(state, timer) {
-  Stepper(state: state, timers: List(Timer(timer)))
+pub opaque type Stepper(state, input) {
+  Stepper(state: state, timers: List(Timer(input)))
 }
 
 /// Represents a deferred future value that can be resolved later.
