@@ -22,6 +22,10 @@ pub opaque type IoDriver(state, input, output) {
   )
 }
 
+pub fn without_io() -> IoDriver(Nil, input, output) {
+  IoDriver(fn() { #(Nil, process.new_selector()) }, fn(state, _) { IoOk(state) })
+}
+
 pub fn using_io(
   new: fn() -> #(state, Selector(input)),
   handle_output: fn(state, output) -> IoResult(state, input),

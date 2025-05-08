@@ -7,9 +7,7 @@ import gleam/option.{type Option, None, Some}
 
 pub fn new() -> Subject(Input) {
   let assert Ok(actor) =
-    actor.using_io(fn() { #(Nil, process.new_selector()) }, fn(state, _) {
-      actor.IoOk(state)
-    })
+    actor.without_io()
     |> actor.start(100, State(None), handle_input)
 
   actor
