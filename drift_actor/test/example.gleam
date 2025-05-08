@@ -101,11 +101,15 @@ fn handle_input(step: Step, now: Timestamp, input: Input) -> Step {
   case input {
     UserEntered(text) ->
       step
-      |> drift.update_state(fn(state) {
+      |> drift.continue(fn(state) {
         case state.active_prompt {
-          Some(deferred) -> drift.resolve(step, deferred, Ok(Nil))
+          Some(deferred) ->
+            step
+            |> drift.resolve(deferred, Ok(Nil))
           None -> panic as "No deferred value to resolve!"
         }
+      })
+      |> drift.update_state(fn(state) {
         State(..state, completed_answers: [text, ..state.completed_answers])
       })
       |> drift.cancel_all_timers()

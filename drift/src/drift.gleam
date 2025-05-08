@@ -6,18 +6,6 @@
 //// outputs. 
 //// `drift` provides a bunch of data types and functions to make handling
 //// this easier.
-//// 
-//// The core type is `Stepper(state, timer)`. It holds the current state and
-//// active timers. The state within the stepper can be updated by using the
-//// `Step(state, timer, output)` type in the following ways:
-//// 1. `being_step` can be used to create a `Step`, and `end_step` to complete
-////    it, yielding the final result.
-//// 2. `tick` takes the current timestamp and a function to apply timer data to
-////    a `Step`, and runs all expired timers.
-//// 3. `step` is provided for convenience, and takes a function to apply an
-////    input to a stepper.
-
-// TODO: Docs out of date!!!
 
 import gleam/int
 import gleam/list
@@ -59,11 +47,11 @@ pub type Effect(output) {
 /// or produce outputs.
 pub opaque type Step(state, input, output, error) {
   ContinueStep(
+    effects: List(Effect(output)),
     state: state,
     timers: List(Timer(input)),
-    effects: List(Effect(output)),
   )
-  StopStep(error: Option(error), effects: List(Effect(output)))
+  StopStep(effects: List(Effect(output)), error: Option(error))
 }
 
 pub type Next(state, input, output, error) {
@@ -187,8 +175,8 @@ pub fn resolve(
 /// If already stopped, the previous error (if any) will not be removed.
 pub fn stop(step: Step(s, i, o, e)) -> Step(s, i, o, e) {
   case step {
-    ContinueStep(effects:, ..) -> StopStep(None, effects)
-    StopStep(error, effects) -> StopStep(error, effects)
+    ContinueStep(effects:, ..) -> StopStep(effects, None)
+    StopStep(effects, error) -> StopStep(effects, error)
   }
 }
 
@@ -197,9 +185,9 @@ pub fn stop(step: Step(s, i, o, e)) -> Step(s, i, o, e) {
 /// If no error is present, the given error will be set.
 pub fn stop_with_error(step: Step(s, i, o, e), error: e) -> Step(s, i, o, e) {
   case step {
-    ContinueStep(effects:, ..) -> StopStep(None, effects)
-    StopStep(old_error, effects) ->
-      StopStep(option.or(old_error, Some(error)), effects)
+    ContinueStep(effects:, ..) -> StopStep(effects, None)
+    StopStep(effects, old_error) ->
+      StopStep(effects, option.or(old_error, Some(error)))
   }
 }
 
@@ -229,7 +217,7 @@ pub fn tick(
 
   to_trigger
   |> list.sort(fn(a, b) { int.compare(a.due_time, b.due_time) })
-  |> list.fold(ContinueStep(state, timers, []), fn(next, timer) {
+  |> list.fold(ContinueStep([], state, timers), fn(next, timer) {
     case next {
       ContinueStep(..) -> apply(next, now, timer.data)
       other -> other
@@ -240,15 +228,16 @@ pub fn tick(
 
 /// Starts a new step to alter the state
 pub fn begin_step(state: Stepper(s, i)) -> Step(s, i, _, _) {
-  ContinueStep(state.state, state.timers, [])
+  ContinueStep([], state.state, state.timers)
 }
 
 /// Ends the current step, yielding the next state.
 pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
+  let effects = list.reverse(step.effects)
   case step {
-    ContinueStep(state, timers, effects) ->
+    ContinueStep(_effects, state, timers) ->
       Continue(effects, Stepper(state, timers), next_tick(timers))
-    StopStep(error, effects) ->
+    StopStep(_effects, error) ->
       case error {
         Some(error) -> StopWithError(effects, error)
         None -> Stop(effects)
