@@ -1,14 +1,14 @@
 import drift
 import drift/actor
+import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
-import gleam/option.{type Option, None, Some}
 
 // Erlang part
 
 pub fn new() -> Subject(Input) {
   let assert Ok(actor) =
     actor.without_io()
-    |> actor.start(100, State(None), handle_input)
+    |> actor.start(100, State(0, dict.new()), handle_input)
 
   actor
 }
@@ -17,13 +17,12 @@ pub fn new() -> Subject(Input) {
 
 pub type Input {
   Echo(String, drift.Deferred(String))
-  // NOTE: This supports only a single caller ATM
   EchoAfter(String, Int, drift.Deferred(String))
-  FinishEcho(String)
+  FinishEcho(Int, String)
 }
 
 type State {
-  State(delayed: Option(drift.Deferred(String)))
+  State(id: Int, calls: Dict(Int, drift.Deferred(String)))
 }
 
 type Step =
@@ -37,15 +36,24 @@ fn handle_input(step: Step, now: drift.Timestamp, input: Input) -> Step {
 
     EchoAfter(value, after, reply_to) ->
       step
-      |> drift.replace_state(State(Some(reply_to)))
-      |> drift.start_timer(drift.Timer(now + after, FinishEcho(value)))
+      |> drift.continue(fn(state) {
+        step
+        |> drift.start_timer(drift.Timer(
+          now + after,
+          FinishEcho(state.id, value),
+        ))
+        |> drift.replace_state(State(
+          state.id + 1,
+          dict.insert(state.calls, state.id, reply_to),
+        ))
+      })
 
-    FinishEcho(value) ->
+    FinishEcho(id, value) ->
       step
       |> drift.continue(fn(state) {
-        case state.delayed {
-          Some(reply_to) -> step |> drift.resolve(reply_to, value)
-          None -> step
+        case dict.get(state.calls, id) {
+          Ok(reply_to) -> step |> drift.resolve(reply_to, value)
+          Error(_) -> step
         }
       })
   }

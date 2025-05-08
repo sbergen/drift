@@ -31,7 +31,7 @@ pub fn concurrent_calls_test() {
   |> list.map(fn(i) {
     process.spawn(fn() {
       let str = string.inspect(i)
-      let result = actor.call(a, 50, echo_actor.Echo(str, _))
+      let result = actor.call(a, 50, echo_actor.EchoAfter(str, 1, _))
       result |> should.equal(str)
     })
   })
