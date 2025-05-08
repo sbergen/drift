@@ -117,7 +117,6 @@ fn handle_message(
   state: State(s, io, i, o, e),
   message: Msg(i),
 ) -> actor.Next(State(s, io, i, o, e), Msg(i)) {
-  echo message
   let now = now()
 
   // Either tick or handle input
@@ -198,4 +197,5 @@ fn bind_io(
 }
 
 @external(erlang, "drift_actor_external", "now")
-fn now() -> Int
+@internal
+pub fn now() -> Int

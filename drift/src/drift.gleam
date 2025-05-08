@@ -76,6 +76,18 @@ pub type Next(state, input, output, error) {
   StopWithError(effects: List(Effect(output)), error: error)
 }
 
+/// Continues the step (unless terminated), by returning a new step
+/// from the provided function operating on the current state.
+pub fn continue(
+  step: Step(s, i, o, e),
+  f: fn(s) -> Step(s, i, o, e),
+) -> Step(s, i, o, e) {
+  case step {
+    ContinueStep(state:, ..) -> f(state)
+    _ -> step
+  }
+}
+
 /// Returns an updated step by applying a function to the current state within the step.
 /// Does nothing if the step is terminated.
 pub fn update_state(step: Step(s, i, o, e), f: fn(s) -> s) -> Step(s, i, o, e) {
