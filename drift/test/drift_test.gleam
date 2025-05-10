@@ -24,8 +24,8 @@ type Output {
 type Step =
   drift.Step(List(String), Input, Output, Nil)
 
-type Effects =
-  drift.Effects(Input, Output)
+type Context =
+  drift.Context(Input, Output)
 
 type Next =
   drift.Next(List(String), Input, Output, Nil)
@@ -70,7 +70,7 @@ fn step(
   state: drift.Stepper(List(String), Input),
   now: drift.Timestamp,
   input: Input,
-  apply: fn(Effects, List(String), Input) -> Step,
+  apply: fn(Context, List(String), Input) -> Step,
 ) -> Next {
   state
   |> drift.begin_step(now)
@@ -78,16 +78,16 @@ fn step(
   |> drift.end_step()
 }
 
-fn apply_input(effects: Effects, lines: List(String), input: Input) -> Step {
+fn apply_input(context: Context, lines: List(String), input: Input) -> Step {
   case input {
     Append(message) -> {
-      let now = drift.now(effects)
-      effects
+      let now = drift.now(context)
+      context
       |> drift.with_state([string.inspect(now) <> ": " <> message, ..lines])
     }
 
     PrintMe -> {
-      effects
+      context
       |> drift.output(Print(
         lines
         |> list.reverse
@@ -97,14 +97,14 @@ fn apply_input(effects: Effects, lines: List(String), input: Input) -> Step {
     }
 
     PrintTime -> {
-      let now = drift.now(effects)
+      let now = drift.now(context)
       let new_line = "It's now: " <> string.inspect(now)
-      effects
+      context
       |> drift.handle_after(10, PrintTime)
       |> drift.with_state(list.prepend(lines, new_line))
     }
 
-    Yank -> effects |> drift.with_state(list.drop(lines, 1))
-    Stop -> effects |> drift.stop()
+    Yank -> context |> drift.with_state(list.drop(lines, 1))
+    Stop -> context |> drift.stop()
   }
 }

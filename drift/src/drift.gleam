@@ -38,72 +38,72 @@ pub type Effect(output) {
   ResolveDeferred(fn() -> Nil)
 }
 
-pub opaque type Effects(input, output) {
-  Effects(
+pub opaque type Context(input, output) {
+  Context(
     start_time: Timestamp,
     timers: List(Timer(input)),
     effects: List(Effect(output)),
   )
 }
 
-pub fn now(effects: Effects(_, _)) -> Timestamp {
-  effects.start_time
+pub fn now(context: Context(_, _)) -> Timestamp {
+  context.start_time
 }
 
 /// Starts a timer within a step.
 pub fn handle_after(
-  effects: Effects(i, o),
+  context: Context(i, o),
   delay: Int,
   input: i,
-) -> Effects(i, o) {
-  let timer = Timer(effects.start_time + delay, input)
-  Effects(..effects, timers: [timer, ..effects.timers])
+) -> Context(i, o) {
+  let timer = Timer(context.start_time + delay, input)
+  Context(..context, timers: [timer, ..context.timers])
 }
 
 // TODO Cancel by ID instead
 /// Returns an updated step with all matching timers canceled.
 /// Does nothing if the step is terminated.
 pub fn cancel_timers(
-  effects: Effects(i, o),
+  context: Context(i, o),
   predicate: fn(i) -> Bool,
-) -> Effects(i, o) {
-  Effects(
-    ..effects,
-    timers: list.filter(effects.timers, fn(timer) { !predicate(timer.data) }),
+) -> Context(i, o) {
+  Context(
+    ..context,
+    timers: list.filter(context.timers, fn(timer) { !predicate(timer.data) }),
   )
 }
 
-pub fn cancel_all_timers(effects: Effects(i, o)) -> Effects(i, o) {
-  Effects(..effects, timers: [])
+pub fn cancel_all_timers(context: Context(i, o)) -> Context(i, o) {
+  Context(..context, timers: [])
 }
 
-pub fn output(effects: Effects(i, o), output: o) -> Effects(i, o) {
-  Effects(..effects, effects: [Output(output), ..effects.effects])
+pub fn output(context: Context(i, o), output: o) -> Context(i, o) {
+  Context(..context, effects: [Output(output), ..context.effects])
 }
 
-pub fn output_many(effects: Effects(i, o), outputs: List(o)) -> Effects(i, o) {
-  list.fold(outputs, effects, output)
+pub fn output_many(context: Context(i, o), outputs: List(o)) -> Context(i, o) {
+  list.fold(outputs, context, output)
 }
 
 pub fn resolve(
-  effects: Effects(i, o),
+  context: Context(i, o),
   deferred: Deferred(a),
   result: a,
-) -> Effects(i, o) {
+) -> Context(i, o) {
   let resolve = fn() { deferred.resolve(result) }
-  Effects(..effects, effects: [ResolveDeferred(resolve), ..effects.effects])
+  Context(..context, effects: [ResolveDeferred(resolve), ..context.effects])
 }
 
 /// An ongoing stepper update, which may update the state, timers,
 /// or produce outputs.
 pub opaque type Step(state, input, output, error) {
-  ContinueStep(effects: Effects(input, output), state: state)
+  ContinueStep(context: Context(input, output), state: state)
   StopStep(effects: List(Effect(output)), error: Option(error))
 }
 
 pub fn continue(
   step: Step(s, i, o, e),
-  f: fn(Effects(i, o), s) -> Step(s, i, o, e),
+  f: fn(Context(i, o), s) -> Step(s, i, o, e),
 ) -> Step(s, i, o, e) {
   case step {
     ContinueStep(effects, state) -> f(effects, state)
@@ -111,16 +111,16 @@ pub fn continue(
   }
 }
 
-pub fn with_state(effects: Effects(i, o), state: s) -> Step(s, i, o, e) {
-  ContinueStep(effects, state)
+pub fn with_state(context: Context(i, o), state: s) -> Step(s, i, o, e) {
+  ContinueStep(context, state)
 }
 
-pub fn stop(effects: Effects(i, o)) -> Step(_, i, o, _) {
-  StopStep(effects.effects, None)
+pub fn stop(context: Context(i, o)) -> Step(_, i, o, _) {
+  StopStep(context.effects, None)
 }
 
-pub fn stop_with_error(effects: Effects(i, o), error: e) -> Step(_, i, o, e) {
-  StopStep(effects.effects, Some(error))
+pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
+  StopStep(context.effects, Some(error))
 }
 
 /// Holds the current state and active timers.
@@ -146,7 +146,7 @@ pub type Next(state, input, output, error) {
 pub fn tick(
   stepper: Stepper(s, i),
   now: Timestamp,
-  apply: fn(Effects(i, o), s, i) -> Step(s, i, o, e),
+  apply: fn(Context(i, o), s, i) -> Step(s, i, o, e),
 ) -> Next(s, i, o, e) {
   let Stepper(state, timers) = stepper
   let #(to_trigger, timers) =
@@ -154,7 +154,7 @@ pub fn tick(
 
   to_trigger
   |> list.sort(fn(a, b) { int.compare(a.due_time, b.due_time) })
-  |> list.fold(ContinueStep(Effects(now, timers, []), state), fn(next, timer) {
+  |> list.fold(ContinueStep(Context(now, timers, []), state), fn(next, timer) {
     case next {
       ContinueStep(effects, state) -> apply(effects, state, timer.data)
       other -> other
@@ -165,14 +165,14 @@ pub fn tick(
 
 /// Starts a new step to alter the state
 pub fn begin_step(state: Stepper(s, i), now: Timestamp) -> Step(s, i, _, _) {
-  let effects = Effects(now, state.timers, [])
+  let effects = Context(now, state.timers, [])
   ContinueStep(effects, state.state)
 }
 
 /// Ends the current step, yielding the next state.
 pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
   case step {
-    ContinueStep(Effects(_, timers, effects), state) ->
+    ContinueStep(Context(_, timers, effects), state) ->
       Continue(list.reverse(effects), Stepper(state, timers), next_tick(timers))
 
     StopStep(effects, Some(error)) ->
