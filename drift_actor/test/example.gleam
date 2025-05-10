@@ -1,4 +1,4 @@
-import drift.{type Deferred, type Timestamp}
+import drift.{type Deferred}
 import drift/actor
 import gleam/erlang/process.{type Selector}
 import gleam/io
@@ -81,7 +81,7 @@ type State {
 type Input {
   StartPrompt(String, Deferred(Result(Nil, String)))
   UserEntered(String)
-  Timeout
+  TimeOut
   Stop
 }
 
@@ -97,7 +97,7 @@ fn new_state() -> State {
   State([], None)
 }
 
-fn handle_input(step: Step, now: Timestamp, input: Input) -> Step {
+fn handle_input(step: Step, input: Input) -> Step {
   case input {
     UserEntered(text) ->
       step
@@ -117,7 +117,7 @@ fn handle_input(step: Step, now: Timestamp, input: Input) -> Step {
     StartPrompt(prompt, result) ->
       step
       |> drift.output(Prompt(prompt))
-      |> drift.start_timer(drift.Timer(now + 2000, Timeout))
+      |> drift.handle_after(2000, TimeOut)
       |> drift.update_state(fn(state) {
         case state.active_prompt {
           Some(deferred) ->
@@ -139,7 +139,7 @@ fn handle_input(step: Step, now: Timestamp, input: Input) -> Step {
       })
       |> drift.stop()
 
-    Timeout ->
+    TimeOut ->
       step
       |> drift.output(Print("Too slow!"))
       |> drift.update_state(fn(state) {

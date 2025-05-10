@@ -20,7 +20,7 @@ pub type Timestamp =
 /// associate to an operation to execute.
 /// If the timer is to be canceled, the creator of the timer needs to ensure
 /// that the data is detailed enough to be identified uniquely.
-pub type Timer(t) {
+pub opaque type Timer(t) {
   Timer(due_time: Timestamp, data: t)
 }
 
@@ -48,20 +48,19 @@ pub type Effect(output) {
 pub opaque type Step(state, input, output, error) {
   ContinueStep(
     effects: List(Effect(output)),
+    start_time: Timestamp,
     state: state,
     timers: List(Timer(input)),
   )
-  StopStep(effects: List(Effect(output)), error: Option(error))
+  StopStep(
+    effects: List(Effect(output)),
+    start_time: Timestamp,
+    error: Option(error),
+  )
 }
 
-pub type Next(state, input, output, error) {
-  Continue(
-    effects: List(Effect(output)),
-    state: Stepper(state, input),
-    due_time: Option(Timestamp),
-  )
-  Stop(effects: List(Effect(output)))
-  StopWithError(effects: List(Effect(output)), error: error)
+pub fn start_timestamp(step: Step(_, _, _, _)) -> Timestamp {
+  step.start_time
 }
 
 /// Continues the step (unless terminated), by returning a new step
@@ -93,10 +92,16 @@ pub fn replace_state(step: Step(s, i, o, e), state: s) -> Step(s, i, o, e) {
 }
 
 /// Starts a timer within a step.
-pub fn start_timer(step: Step(s, i, o, e), timer: Timer(i)) -> Step(s, i, o, e) {
+pub fn handle_after(
+  step: Step(s, i, o, e),
+  delay: Int,
+  input: i,
+) -> Step(s, i, o, e) {
   case step {
-    ContinueStep(timers:, ..) as continue ->
+    ContinueStep(timers:, start_time:, ..) as continue -> {
+      let timer = Timer(start_time + delay, input)
       ContinueStep(..continue, timers: [timer, ..timers])
+    }
     _ -> step
   }
 }
@@ -105,13 +110,13 @@ pub fn start_timer(step: Step(s, i, o, e), timer: Timer(i)) -> Step(s, i, o, e) 
 /// Does nothing if the step is terminated.
 pub fn cancel_timers(
   step: Step(s, i, o, e),
-  predicate: fn(Timer(i)) -> Bool,
+  predicate: fn(i) -> Bool,
 ) -> Step(s, i, o, e) {
   case step {
     ContinueStep(timers:, ..) as continue ->
       ContinueStep(
         ..continue,
-        timers: list.filter(timers, fn(timer) { !predicate(timer) }),
+        timers: list.filter(timers, fn(timer) { !predicate(timer.data) }),
       )
     _ -> step
   }
@@ -175,8 +180,9 @@ pub fn resolve(
 /// If already stopped, the previous error (if any) will not be removed.
 pub fn stop(step: Step(s, i, o, e)) -> Step(s, i, o, e) {
   case step {
-    ContinueStep(effects:, ..) -> StopStep(effects, None)
-    StopStep(effects, error) -> StopStep(effects, error)
+    ContinueStep(effects:, start_time:, ..) ->
+      StopStep(effects, start_time, None)
+    StopStep(effects, start_time, error) -> StopStep(effects, start_time, error)
   }
 }
 
@@ -185,22 +191,25 @@ pub fn stop(step: Step(s, i, o, e)) -> Step(s, i, o, e) {
 /// If no error is present, the given error will be set.
 pub fn stop_with_error(step: Step(s, i, o, e), error: e) -> Step(s, i, o, e) {
   case step {
-    ContinueStep(effects:, ..) -> StopStep(effects, None)
-    StopStep(effects, old_error) ->
-      StopStep(effects, option.or(old_error, Some(error)))
+    ContinueStep(effects:, start_time:, ..) ->
+      StopStep(effects, start_time, None)
+    StopStep(effects, start_time, old_error) ->
+      StopStep(effects, start_time, option.or(old_error, Some(error)))
   }
-}
-
-/// Create a new stepper with the initial state and timers.
-pub fn start_with_timers(
-  state: s,
-  timers: List(Timer(t)),
-) -> #(Stepper(s, t), Option(Timestamp)) {
-  #(Stepper(state, timers), next_tick(timers))
 }
 
 pub fn start(state: s) -> Stepper(s, t) {
   Stepper(state, [])
+}
+
+pub type Next(state, input, output, error) {
+  Continue(
+    effects: List(Effect(output)),
+    state: Stepper(state, input),
+    due_time: Option(Timestamp),
+  )
+  Stop(effects: List(Effect(output)))
+  StopWithError(effects: List(Effect(output)), error: error)
 }
 
 /// Triggers all expired timers.
@@ -209,7 +218,7 @@ pub fn start(state: s) -> Stepper(s, t) {
 pub fn tick(
   state: Stepper(s, i),
   now: Timestamp,
-  apply: fn(Step(s, i, o, e), Timestamp, i) -> Step(s, i, o, e),
+  apply: fn(Step(s, i, o, e), i) -> Step(s, i, o, e),
 ) -> Next(s, i, o, e) {
   let Stepper(state, timers) = state
   let #(to_trigger, timers) =
@@ -217,9 +226,9 @@ pub fn tick(
 
   to_trigger
   |> list.sort(fn(a, b) { int.compare(a.due_time, b.due_time) })
-  |> list.fold(ContinueStep([], state, timers), fn(next, timer) {
+  |> list.fold(ContinueStep([], now, state, timers), fn(next, timer) {
     case next {
-      ContinueStep(..) -> apply(next, now, timer.data)
+      ContinueStep(..) -> apply(next, timer.data)
       other -> other
     }
   })
@@ -227,17 +236,17 @@ pub fn tick(
 }
 
 /// Starts a new step to alter the state
-pub fn begin_step(state: Stepper(s, i)) -> Step(s, i, _, _) {
-  ContinueStep([], state.state, state.timers)
+pub fn begin_step(state: Stepper(s, i), now: Timestamp) -> Step(s, i, _, _) {
+  ContinueStep([], now, state.state, state.timers)
 }
 
 /// Ends the current step, yielding the next state.
 pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
   let effects = list.reverse(step.effects)
   case step {
-    ContinueStep(_effects, state, timers) ->
+    ContinueStep(state:, timers:, ..) ->
       Continue(effects, Stepper(state, timers), next_tick(timers))
-    StopStep(_effects, error) ->
+    StopStep(error:, ..) ->
       case error {
         Some(error) -> StopWithError(effects, error)
         None -> Stop(effects)

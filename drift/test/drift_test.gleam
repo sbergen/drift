@@ -28,8 +28,13 @@ type Next =
   drift.Next(List(String), Input, Output, Nil)
 
 pub fn example_use_test() {
-  let assert #(state, Some(10)) =
-    drift.start_with_timers(["Hello, World!"], [drift.Timer(10, PrintTime)])
+  let state = drift.start(["Hello, World!"])
+
+  let assert Continue([], state, Some(10)) =
+    state
+    |> drift.begin_step(0)
+    |> drift.handle_after(10, PrintTime)
+    |> drift.end_step()
 
   let assert Continue([], state, Some(10)) =
     step(state, 0, Append("Wibble!"), apply_input)
@@ -58,17 +63,18 @@ fn step(
   state: drift.Stepper(List(String), Input),
   now: drift.Timestamp,
   input: Input,
-  apply: fn(Step, drift.Timestamp, Input) -> Step,
+  apply: fn(Step, Input) -> Step,
 ) -> Next {
   state
-  |> drift.begin_step()
-  |> apply(now, input)
+  |> drift.begin_step(now)
+  |> apply(input)
   |> drift.end_step()
 }
 
-fn apply_input(step: Step, now: drift.Timestamp, input: Input) -> Step {
+fn apply_input(step: Step, input: Input) -> Step {
   case input {
     Append(message) -> {
+      let now = drift.start_timestamp(step)
       use lines <- drift.update_state(step)
       [string.inspect(now) <> ": " <> message, ..lines]
     }
@@ -84,10 +90,11 @@ fn apply_input(step: Step, now: drift.Timestamp, input: Input) -> Step {
     }
 
     PrintTime -> {
+      let now = drift.start_timestamp(step)
       let new_line = "It's now: " <> string.inspect(now)
       step
       |> drift.update_state(list.prepend(_, new_line))
-      |> drift.start_timer(drift.Timer(now + 10, PrintTime))
+      |> drift.handle_after(10, PrintTime)
     }
 
     Yank -> drift.update_state(step, list.drop(_, 1))

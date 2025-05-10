@@ -28,7 +28,7 @@ type State {
 type Step =
   drift.Step(State, Input, Nil, Nil)
 
-fn handle_input(step: Step, now: drift.Timestamp, input: Input) -> Step {
+fn handle_input(step: Step, input: Input) -> Step {
   case input {
     Echo(value, to) ->
       step
@@ -38,10 +38,7 @@ fn handle_input(step: Step, now: drift.Timestamp, input: Input) -> Step {
       step
       |> drift.continue(fn(state) {
         step
-        |> drift.start_timer(drift.Timer(
-          now + after,
-          FinishEcho(state.id, value),
-        ))
+        |> drift.handle_after(after, FinishEcho(state.id, value))
         |> drift.replace_state(State(
           state.id + 1,
           dict.insert(state.calls, state.id, reply_to),

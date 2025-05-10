@@ -1,6 +1,4 @@
-import drift.{
-  type Deferred, type Step, type Timestamp, Continue, Stop, StopWithError,
-}
+import drift.{type Deferred, type Step, Continue, Stop, StopWithError}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
@@ -37,13 +35,12 @@ pub fn start(
   io_driver: IoDriver(io, i, o),
   timeout: Int,
   state: s,
-  handle_input: fn(Step(s, i, o, e), Timestamp, i) -> Step(s, i, o, e),
+  handle_input: fn(Step(s, i, o, e), i) -> Step(s, i, o, e),
 ) -> Result(Subject(i), actor.StartError) {
   actor.new_with_initialiser(timeout, fn(self) {
     let #(io_state, input_selector) = io_driver.new()
 
     let stepper = drift.start(state)
-    let handle_input = fn(s, t, i) { handle_input(s, t, i) }
 
     let inputs = process.new_subject()
     let base_selector =
@@ -112,7 +109,7 @@ type State(state, io, input, output, error) {
     io_driver: IoDriver(io, input, output),
     self: Subject(Msg(input)),
     base_selector: Selector(Msg(input)),
-    handle_input: fn(Step(state, input, output, error), Timestamp, input) ->
+    handle_input: fn(Step(state, input, output, error), input) ->
       Step(state, input, output, error),
   )
 }
@@ -133,8 +130,9 @@ fn handle_message(
         None -> process.TimerNotFound
       }
 
-      drift.begin_step(state.stepper)
-      |> state.handle_input(now, input)
+      state.stepper
+      |> drift.begin_step(now)
+      |> state.handle_input(input)
       |> drift.end_step()
     }
   }
