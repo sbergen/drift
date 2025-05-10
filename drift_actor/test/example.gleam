@@ -141,14 +141,14 @@ fn handle_input(step: Step, input: Input) -> Step {
 
     TimeOut ->
       step
-      |> drift.output(Print("Too slow!"))
-      |> drift.update_state(fn(state) {
+      |> drift.continue(fn(state) {
         case state.active_prompt {
-          Some(deferred) -> drift.resolve(step, deferred, Error("Stopping!"))
+          Some(deferred) -> step |> drift.resolve(deferred, Error("Stopping!"))
           None -> step
         }
-        State(..state, active_prompt: None)
+        |> drift.replace_state(State(..state, active_prompt: None))
+        |> drift.output(Print("Too slow!"))
+        |> drift.stop()
       })
-      |> drift.stop()
   }
 }
