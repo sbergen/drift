@@ -1,4 +1,4 @@
-name = "drift_actor"
+name = "drift_example"
 version = "1.0.0"
 
 # Fill out these fields if you intend to generate HTML documentation or publish
@@ -14,13 +14,7 @@ version = "1.0.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-gleam_otp = { git = "https://github.com/gleam-lang/otp.git", ref = "504025fcc2a53ab55ed116cdaf8513e56c92447b" }
-gleam_erlang = ">= 1.0.0-rc1 and < 2.0.0"
 drift = { path = "../drift" }
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
-input = ">= 1.0.0 and < 2.0.0"
-
-# Will clean up examples when things are more final
-drift_example = { path = "../drift_example" }
