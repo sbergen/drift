@@ -114,15 +114,18 @@ fn handle_input(context: Context, state: State, input: Input) -> Step {
         State(..state, completed_answers: [text, ..state.completed_answers]),
       )
 
-    StartPrompt(prompt, result) ->
-      case state.active_prompt {
-        Some(deferred) ->
-          context |> drift.resolve(deferred, Error("Canceled by new prompt!"))
-        None -> context
-      }
-      |> drift.output(Prompt(prompt))
-      |> drift.handle_after(2000, TimeOut)
-      |> drift.with_state(State(..state, active_prompt: Some(result)))
+    StartPrompt(prompt, result) -> {
+      let #(context, _) =
+        case state.active_prompt {
+          Some(deferred) ->
+            context |> drift.resolve(deferred, Error("Canceled by new prompt!"))
+          None -> context
+        }
+        |> drift.output(Prompt(prompt))
+        |> drift.handle_after(2000, TimeOut)
+
+      context |> drift.with_state(State(..state, active_prompt: Some(result)))
+    }
 
     Stop ->
       context

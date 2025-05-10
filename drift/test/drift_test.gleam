@@ -36,10 +36,9 @@ pub fn example_use_test() {
   let assert Continue([], state, Some(10)) =
     state
     |> drift.begin_step(0)
-    |> drift.continue(fn(effects, state) {
-      effects
-      |> drift.handle_after(10, PrintTime)
-      |> drift.with_state(state)
+    |> drift.continue(fn(context, state) {
+      let #(context, _) = drift.handle_after(context, 10, PrintTime)
+      context |> drift.with_state(state)
     })
     |> drift.end_step()
 
@@ -99,9 +98,8 @@ fn apply_input(context: Context, lines: List(String), input: Input) -> Step {
     PrintTime -> {
       let now = drift.now(context)
       let new_line = "It's now: " <> string.inspect(now)
-      context
-      |> drift.handle_after(10, PrintTime)
-      |> drift.with_state(list.prepend(lines, new_line))
+      let #(context, _) = drift.handle_after(context, 10, PrintTime)
+      context |> drift.with_state(list.prepend(lines, new_line))
     }
 
     Yank -> context |> drift.with_state(list.drop(lines, 1))

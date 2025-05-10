@@ -38,13 +38,14 @@ fn handle_input(context: Context, state: State, input: Input) -> Step {
       |> drift.resolve(to, value)
       |> drift.with_state(state)
 
-    EchoAfter(value, after, reply_to) ->
-      context
-      |> drift.handle_after(after, FinishEcho(state.id, value))
-      |> drift.with_state(State(
-        state.id + 1,
-        dict.insert(state.calls, state.id, reply_to),
-      ))
+    EchoAfter(value, after, reply_to) -> {
+      let #(context, _) =
+        drift.handle_after(context, after, FinishEcho(state.id, value))
+      drift.with_state(
+        context,
+        State(state.id + 1, dict.insert(state.calls, state.id, reply_to)),
+      )
+    }
 
     FinishEcho(id, value) ->
       case dict.get(state.calls, id) {
