@@ -25,33 +25,32 @@ type State {
   State(id: Int, calls: Dict(Int, drift.Deferred(String)))
 }
 
+type Context =
+  drift.Context(Input, Nil)
+
 type Step =
   drift.Step(State, Input, Nil, Nil)
 
-fn handle_input(step: Step, input: Input) -> Step {
+fn handle_input(context: Context, state: State, input: Input) -> Step {
   case input {
     Echo(value, to) ->
-      step
+      context
       |> drift.resolve(to, value)
+      |> drift.with_state(state)
 
     EchoAfter(value, after, reply_to) ->
-      step
-      |> drift.continue(fn(state) {
-        step
-        |> drift.handle_after(after, FinishEcho(state.id, value))
-        |> drift.replace_state(State(
-          state.id + 1,
-          dict.insert(state.calls, state.id, reply_to),
-        ))
-      })
+      context
+      |> drift.handle_after(after, FinishEcho(state.id, value))
+      |> drift.with_state(State(
+        state.id + 1,
+        dict.insert(state.calls, state.id, reply_to),
+      ))
 
     FinishEcho(id, value) ->
-      step
-      |> drift.continue(fn(state) {
-        case dict.get(state.calls, id) {
-          Ok(reply_to) -> step |> drift.resolve(reply_to, value)
-          Error(_) -> step
-        }
-      })
+      case dict.get(state.calls, id) {
+        Ok(reply_to) -> context |> drift.resolve(reply_to, value)
+        Error(_) -> context
+      }
+      |> drift.with_state(state)
   }
 }

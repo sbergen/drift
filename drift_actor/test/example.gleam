@@ -90,6 +90,9 @@ type Output {
   Print(String)
 }
 
+type Context =
+  drift.Context(Input, Output)
+
 type Step =
   drift.Step(State, Input, Output, Nil)
 
@@ -97,58 +100,46 @@ fn new_state() -> State {
   State([], None)
 }
 
-fn handle_input(step: Step, input: Input) -> Step {
+fn handle_input(context: Context, state: State, input: Input) -> Step {
   case input {
     UserEntered(text) ->
-      step
-      |> drift.continue(fn(state) {
-        case state.active_prompt {
-          Some(deferred) ->
-            step
-            |> drift.resolve(deferred, Ok(Nil))
-          None -> panic as "No deferred value to resolve!"
-        }
-      })
-      |> drift.update_state(fn(state) {
-        State(..state, completed_answers: [text, ..state.completed_answers])
-      })
+      case state.active_prompt {
+        Some(deferred) ->
+          context
+          |> drift.resolve(deferred, Ok(Nil))
+        None -> panic as "No deferred value to resolve!"
+      }
       |> drift.cancel_all_timers()
+      |> drift.with_state(
+        State(..state, completed_answers: [text, ..state.completed_answers]),
+      )
 
     StartPrompt(prompt, result) ->
-      step
+      case state.active_prompt {
+        Some(deferred) ->
+          context |> drift.resolve(deferred, Error("Canceled by new prompt!"))
+        None -> context
+      }
       |> drift.output(Prompt(prompt))
       |> drift.handle_after(2000, TimeOut)
-      |> drift.update_state(fn(state) {
-        case state.active_prompt {
-          Some(deferred) ->
-            drift.resolve(step, deferred, Error("Canceled by new prompt!"))
-          None -> step
-        }
-        State(..state, active_prompt: Some(result))
-      })
+      |> drift.with_state(State(..state, active_prompt: Some(result)))
 
     Stop ->
-      step
+      context
       |> drift.output(Print("Your answers were:"))
-      |> drift.output_from_state(fn(state) {
-        Print(
-          state.completed_answers
-          |> list.reverse
-          |> string.join("\n"),
-        )
-      })
+      |> drift.output(Print(
+        state.completed_answers
+        |> list.reverse
+        |> string.join("\n"),
+      ))
       |> drift.stop()
 
     TimeOut ->
-      step
-      |> drift.continue(fn(state) {
-        case state.active_prompt {
-          Some(deferred) -> step |> drift.resolve(deferred, Error("Stopping!"))
-          None -> step
-        }
-        |> drift.replace_state(State(..state, active_prompt: None))
-        |> drift.output(Print("Too slow!"))
-        |> drift.stop()
-      })
+      case state.active_prompt {
+        Some(deferred) -> context |> drift.resolve(deferred, Error("Stopping!"))
+        None -> context
+      }
+      |> drift.output(Print("Too slow!"))
+      |> drift.stop()
   }
 }

@@ -163,6 +163,18 @@ pub fn tick(
   |> end_step()
 }
 
+pub fn step(
+  stepper: Stepper(s, i),
+  now: Timestamp,
+  input: i,
+  apply: fn(Context(i, o), s, i) -> Step(s, i, o, e),
+) -> Next(s, i, o, e) {
+  stepper
+  |> begin_step(now)
+  |> continue(fn(context, state) { apply(context, state, input) })
+  |> end_step()
+}
+
 /// Starts a new step to alter the state
 pub fn begin_step(state: Stepper(s, i), now: Timestamp) -> Step(s, i, _, _) {
   let effects = Context(now, state.timers, [])
