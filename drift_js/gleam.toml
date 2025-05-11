@@ -20,3 +20,4 @@ drift = { path = "../drift" }
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+prompter = { path = "../examples/prompter" }

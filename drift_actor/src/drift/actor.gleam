@@ -15,9 +15,9 @@ pub type IoResult(state, input) {
   InputSelectorChanged(state, Selector(input))
 }
 
-pub opaque type IoDriver(state, input, output) {
+pub type IoDriver(state, input, output) {
   IoDriver(
-    new: fn() -> #(state, Selector(input)),
+    init: fn() -> #(state, Selector(input)),
     handle_output: fn(state, output) -> IoResult(state, input),
   )
 }
@@ -27,10 +27,10 @@ pub fn without_io() -> IoDriver(Nil, input, output) {
 }
 
 pub fn using_io(
-  new: fn() -> #(state, Selector(input)),
+  init: fn() -> #(state, Selector(input)),
   handle_output: fn(state, output) -> IoResult(state, input),
 ) -> IoDriver(state, input, output) {
-  IoDriver(new, handle_output)
+  IoDriver(init, handle_output)
 }
 
 pub fn start(
@@ -40,7 +40,7 @@ pub fn start(
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
 ) -> Result(Subject(i), actor.StartError) {
   actor.new_with_initialiser(timeout, fn(self) {
-    let #(io_state, input_selector) = io_driver.new()
+    let #(io_state, input_selector) = io_driver.init()
 
     let stepper = drift.start(state)
 

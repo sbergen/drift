@@ -83,14 +83,35 @@ pub fn send_cancels_timeout_test() {
   promise.resolve(Nil)
 }
 
-pub fn receive_cancels_timeout_test() {
+pub fn queued_receive_cancels_timeout_test() {
   let loop = event_loop.new()
 
   event_loop.send(loop, 0)
   let assert Ok(Nil) = event_loop.set_timeout(loop, 10)
-  
+
   use result <- await(receive_immediate(loop))
   let assert Ok(HandleInput(0)) = result
+
+  let assert Ok(result) = event_loop.receive(loop)
+  use result <- await(timeout(result, 20))
+  let assert Error(Nil) = result as "no timeout should be triggered"
+
+  promise.resolve(Nil)
+}
+
+pub fn interleaved_queued_receive_cancels_timeout_test() {
+  let loop = event_loop.new()
+
+  event_loop.send(loop, 0)
+  event_loop.send(loop, 1)
+  let assert Ok(Nil) = event_loop.set_timeout(loop, 10)
+
+  use result <- await(receive_immediate(loop))
+  let assert Ok(HandleInput(0)) = result
+  let assert Ok(Nil) = event_loop.set_timeout(loop, 10)
+
+  use result <- await(receive_immediate(loop))
+  let assert Ok(HandleInput(1)) = result
 
   let assert Ok(result) = event_loop.receive(loop)
   use result <- await(timeout(result, 20))

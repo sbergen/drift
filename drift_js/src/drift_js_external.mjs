@@ -5,6 +5,10 @@ import {
     HandleInput,
 } from './drift/js/internal/event_loop.mjs';
 
+export function now() {
+    return Math.round(performance.now());
+}
+
 export function init() {
     return new EventLoop();
 }
