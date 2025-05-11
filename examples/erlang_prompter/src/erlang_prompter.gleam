@@ -2,6 +2,7 @@ import drift/actor
 import drift/example/prompter.{StartPrompt, Stop, UserEntered}
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/io
+import gleam/option.{type Option, None, Some}
 import input
 
 pub fn main() -> Nil {
@@ -39,13 +40,14 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
         prompter.Prompt(prompt) -> {
           // Simulate async I/O
           let reply_to = process.new_subject()
-          process.spawn(fn() {
-            let assert Ok(result) = input.input(prompt)
-            process.send(reply_to, result)
-          })
+          let pid =
+            process.spawn(fn() {
+              let assert Ok(result) = input.input(prompt)
+              process.send(reply_to, result)
+            })
 
           actor.InputSelectorChanged(
-            driver,
+            IoDriver(..driver, prompt_pid: Some(pid)),
             process.new_selector()
               |> process.select_map(reply_to, UserEntered),
           )
@@ -55,6 +57,14 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
           io.println(text)
           actor.IoOk(driver)
         }
+
+        prompter.CancelPrompt -> {
+          case driver.prompt_pid {
+            Some(pid) -> process.kill(pid)
+            None -> Nil
+          }
+          actor.IoOk(IoDriver(..driver, prompt_pid: None))
+        }
       }
     })
     |> actor.start(1000, prompter.new_state(), prompter.handle_input)
@@ -62,9 +72,9 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
 }
 
 fn new_io_driver() -> #(IoDriver, Selector(prompter.Input)) {
-  #(IoDriver(io.println), process.new_selector())
+  #(IoDriver(io.println, None), process.new_selector())
 }
 
 type IoDriver {
-  IoDriver(output: fn(String) -> Nil)
+  IoDriver(output: fn(String) -> Nil, prompt_pid: Option(process.Pid))
 }

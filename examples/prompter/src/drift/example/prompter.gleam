@@ -34,6 +34,7 @@ pub type Input {
 /// Outputs to be applied in the wrapping context
 pub type Output {
   Prompt(String)
+  CancelPrompt
   Print(String)
 }
 
@@ -57,6 +58,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
         Some(deferred) ->
           context
           |> drift.resolve(deferred, Ok(Nil))
+          |> drift.output(CancelPrompt)
         None -> panic as "No deferred value to resolve!"
       }
       |> drift.cancel_all_timers()
@@ -68,7 +70,9 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
       let #(context, _) =
         case state.active_prompt {
           Some(deferred) ->
-            context |> drift.resolve(deferred, Error("Canceled by new prompt!"))
+            context
+            |> drift.resolve(deferred, Error("Canceled by new prompt!"))
+            |> drift.output(CancelPrompt)
           None -> context
         }
         |> drift.output(Prompt(prompt))
@@ -85,6 +89,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
         |> list.reverse
         |> string.join("\n"),
       ))
+      |> drift.output(CancelPrompt)
       |> drift.stop()
 
     Handle(TimeOut) ->
@@ -93,6 +98,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
         None -> context
       }
       |> drift.output(Print("Too slow!"))
+      |> drift.output(CancelPrompt)
       |> drift.stop()
   }
 }

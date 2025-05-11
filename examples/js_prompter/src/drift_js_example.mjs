@@ -1,26 +1,10 @@
-import fs from "node:fs";
-import { Buffer } from "node:buffer"
-import { Ok, Error as GError } from "./gleam.mjs";
+export function read_stdin(callback) {
+    let handler = data => callback(data.toString());
+    process.stdin.on("data", handler);
+    return () => process.stdin.off("data", handler);
+}
 
-/**
- * Adapted from https://github.com/bcpeinhardt/input/blob/main/src/input_ffi.mjs
- */
-export function read_line(callback) {
-    try {
-        // 4096 bytes is the limit for cli input in bash.
-        const buffer = Buffer.alloc(4096);
-        fs.read(0, buffer, (err, bytesRead, buffer) => {
-            if (err) {
-                callback(new GError(undefined))
-            } else {
-                let input = buffer.toString('utf-8', 0, bytesRead);
-
-                // Trim trailing newlines
-                input = input.replace(/[\r\n]+$/, '');
-                callback(new Ok(input));
-            }
-        });
-    } catch {
-        callback(new GError(undefined));
-    }
+export function pause_io() {
+    process.stdin.pause();
+    process.stdout.pause();
 }
