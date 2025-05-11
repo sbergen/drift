@@ -20,6 +20,14 @@ export function stop(loop) {
     loop.stop();
 }
 
+export function register_stop_callback(loop, callback) {
+    loop.register_stop_callback(callback);
+}
+
+export function unregister_stop_callback(loop, callback) {
+    loop.unregister_stop_callback(callback);
+}
+
 export function receive(loop, handler) {
     return loop.receive(handler);
 }
@@ -37,10 +45,37 @@ export class EventLoop {
     #handler;
     #timeout;
     #stopped = false;
+    #stop_callbacks = new Set();
 
     stop() {
+        if (this.#stopped) {
+            return;
+        }
+
         this.#stopped = true;
         this.#queue = null;
+
+        this.#cancelTimeout();
+
+        for (const callback of this.#stop_callbacks) {
+            callback();
+        }
+
+        this.#stop_callbacks = null;
+    }
+
+    register_stop_callback(callback) {
+        if (this.#stopped) {
+            callback();
+        } else {
+            this.#stop_callbacks.add(callback);
+        }
+    }
+
+    unregister_stop_callback(callback) {
+        if (!this.#stopped) {
+            this.#stop_callbacks.delete(callback);
+        }
     }
 
     receive(handler) {
@@ -65,7 +100,7 @@ export class EventLoop {
 
     send(message) {
         if (this.#stopped) {
-            return new Error(new Stopped());
+            return;
         }
 
         this.#cancelTimeout();
@@ -75,8 +110,6 @@ export class EventLoop {
         } else {
             this.#queue.push(message);
         }
-
-        return new Ok(undefined);
     }
 
     setTimeout(after) {

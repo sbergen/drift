@@ -1,7 +1,5 @@
 import drift.{type Context, type Deferred, type Step}
-import drift/js/internal/event_loop.{
-  type EventLoop, type EventLoopError, HandleInput, Tick,
-}
+import drift/js/internal/event_loop.{type EventLoop, HandleInput, Tick}
 import gleam/int
 import gleam/javascript/promise.{type Promise, await}
 import gleam/list
@@ -9,28 +7,26 @@ import gleam/option.{None, Some}
 import gleam/result
 
 pub opaque type Runtime(i) {
-  Runtime(send: fn(i) -> Result(Nil, EventLoopError))
+  Runtime(loop: EventLoop(i))
 }
 
 /// Sends an input to be handled by the runtime.
-/// Returns an error if the runtime has been stopped.
 pub fn send(runtime: Runtime(i), input: i) -> Nil {
-  let _ = runtime.send(input)
-  Nil
+  event_loop.send(runtime.loop, input)
 }
 
 pub fn call_forever(
   runtime: Runtime(i),
   make_request: fn(Deferred(a)) -> i,
-) -> Promise(a) {
-  // TODO: Check that the runtime hasn't stopped!
+) -> Promise(Result(a, Nil)) {
   let #(promise, resolve) = promise.start()
   let deferred = drift.defer(resolve)
-  runtime.send(make_request(deferred))
-  promise
+
+  event_loop.send(runtime.loop, make_request(deferred))
+  event_loop.error_if_stopped(runtime.loop, promise, Nil)
 }
 
-pub fn run(
+pub fn start(
   state: s,
   io: io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
@@ -38,13 +34,10 @@ pub fn run(
 ) -> #(Promise(Result(Nil, e)), Runtime(i)) {
   let loop = event_loop.start()
   let stepper = drift.start(state)
-  let send_raw = event_loop.send(loop, _)
-  let runtime = Runtime(send_raw)
-  let handle_output = fn(io, output) {
-    handle_output(io, output, send(runtime, _))
-  }
+  let send = event_loop.send(loop, _)
+  let handle_output = fn(io, output) { handle_output(io, output, send) }
   let result = do_loop(loop, stepper, io, handle_input, handle_output)
-  #(result, runtime)
+  #(result, Runtime(loop))
 }
 
 fn do_loop(
@@ -93,11 +86,11 @@ fn do_loop(
 
       case io {
         Ok(io) -> do_loop(loop, stepper, io, handle_input, handle_output)
-        Error(error) -> promise.resolve(Error(error))
+        Error(error) -> stop(loop, Error(error))
       }
     }
-    drift.Stop(_effects) -> promise.resolve(Ok(Nil))
-    drift.StopWithError(_effects, error) -> promise.resolve(Error(error))
+    drift.Stop(_effects) -> stop(loop, Ok(Nil))
+    drift.StopWithError(_effects, error) -> stop(loop, Error(error))
   }
 }
 

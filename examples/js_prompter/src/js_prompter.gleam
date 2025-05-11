@@ -5,21 +5,26 @@ import gleam/javascript/promise
 
 pub fn main() {
   let #(result, r) =
-    runtime.run(prompter.new_state(), Nil, prompter.handle_input, handle_output)
+    runtime.start(
+      prompter.new_state(),
+      Nil,
+      prompter.handle_input,
+      handle_output,
+    )
 
-  use call_result <- promise.await(
+  use _ <- promise.await(
     runtime.call_forever(r, StartPrompt("What's your name?", _)),
   )
-  let assert Ok(Nil) = call_result
 
-  use call_result <- promise.await(
+  use _ <- promise.await(
     runtime.call_forever(r, StartPrompt("Who's the best?", _)),
   )
-  let assert Ok(Nil) = call_result
 
   runtime.send(r, prompter.Stop)
 
-  result
+  use result <- promise.await(result)
+  let assert Ok(Nil) = result
+  promise.resolve(Nil)
 }
 
 fn handle_output(

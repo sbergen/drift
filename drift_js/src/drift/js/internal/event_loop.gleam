@@ -22,13 +22,27 @@ pub fn start() -> EventLoop(i)
 @external(javascript, "../../../drift_js_external.mjs", "stop")
 pub fn stop(loop: EventLoop(i)) -> Nil
 
+pub fn error_if_stopped(
+  loop: EventLoop(i),
+  operation: Promise(a),
+  error: e,
+) -> Promise(Result(a, e)) {
+  let #(time_out_promise, time_out) = promise.start()
+  let callback = fn() { time_out(Error(error)) }
+  register_stop_callback(loop, callback)
+
+  promise.race_list([operation |> promise.map(Ok), time_out_promise])
+  |> promise.tap(fn(_) { unregister_stop_callback(loop, callback) })
+}
+
 /// Sends a message, which will a complete a promise returned from `receive`,
 /// regardless of whether `receive` is called before or after `send`.
 /// Will queue the value if call more times than `receive`.
 /// Clears any previously set timeout.
-/// Will return an error if the event loop has been stopped.
+/// Will not return an error if the event loop has been stopped,
+/// use `error_if_stopped` instead.
 @external(javascript, "../../../drift_js_external.mjs", "send")
-pub fn send(loop: EventLoop(i), input: i) -> Result(Nil, EventLoopError)
+pub fn send(loop: EventLoop(i), input: i) -> Nil
 
 /// Sets the time to the next time `receive` should return `Tick`.
 /// Only one timeout can be set at a time.
@@ -55,3 +69,9 @@ fn receive_with_callback(
   loop: EventLoop(i),
   callback: fn(Event(i)) -> Nil,
 ) -> Result(Nil, EventLoopError)
+
+@external(javascript, "../../../drift_js_external.mjs", "register_stop_callback")
+fn register_stop_callback(loop: EventLoop(i), callback: fn() -> Nil) -> Nil
+
+@external(javascript, "../../../drift_js_external.mjs", "unregister_stop_callback")
+fn unregister_stop_callback(loop: EventLoop(i), callback: fn() -> Nil) -> Nil
