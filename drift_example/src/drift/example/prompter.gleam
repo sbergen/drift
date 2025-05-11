@@ -18,23 +18,28 @@ pub fn new_state() -> State {
   State([], None)
 }
 
+// The types below are perhaps a bit granular for this example,
+// but demonstrate separating the different types of inputs,
+// while making some of them inaccessible publicly.
+// However, they also make the handler function clearer.
+
 /// Input type for any input we can handle.
-/// Both IO-drive inputs and user-driven inputs need to be publicly constructible.
-/// However, if you want to hide e.g. the "time out" command,
-/// this type could be made opaque with functions to construct the public variants.
 pub type Input {
   StartPrompt(String, Deferred(Result(Nil, String)))
-  Stop
-  // The result of a prompt (system input)
   UserEntered(String)
-  // 
-  TimeOut
+  Stop
+  Handle(InternalInput)
 }
 
 /// Outputs to be applied in the wrapping context
 pub type Output {
   Prompt(String)
   Print(String)
+}
+
+/// Opaque type to hide inputs that shouldn't be used from the outside
+pub opaque type InternalInput {
+  TimeOut
 }
 
 type Context =
@@ -67,7 +72,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
           None -> context
         }
         |> drift.output(Prompt(prompt))
-        |> drift.handle_after(2000, TimeOut)
+        |> drift.handle_after(2000, Handle(TimeOut))
 
       context |> drift.with_state(State(..state, active_prompt: Some(result)))
     }
@@ -82,7 +87,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
       ))
       |> drift.stop()
 
-    TimeOut ->
+    Handle(TimeOut) ->
       case state.active_prompt {
         Some(deferred) -> context |> drift.resolve(deferred, Error("Stopping!"))
         None -> context

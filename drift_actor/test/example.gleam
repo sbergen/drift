@@ -1,16 +1,14 @@
 import drift/actor
-import drift/example/prompter.{StartPrompt, Stop}
-import gleam/erlang/process.{type Selector}
+import drift/example/prompter.{StartPrompt, Stop, UserEntered}
+import gleam/erlang/process.{type Selector, type Subject}
 import gleam/io
 import input
 
 pub fn main() -> Nil {
   let actor = new_prompter_actor()
 
-  let assert Ok(_) =
-    actor.call_forever(actor, StartPrompt("What's your name? ", _))
-  let assert Ok(_) =
-    actor.call_forever(actor, StartPrompt("Who's the best? ", _))
+  let assert Ok(Nil) = prompt(actor, "What's your name? ")
+  let assert Ok(Nil) = prompt(actor, "Who's the best? ")
 
   process.send(actor, Stop)
 
@@ -18,6 +16,10 @@ pub fn main() -> Nil {
     Ok(actor_pid) -> wait_for_process(actor_pid)
     Error(_) -> Nil
   }
+}
+
+fn prompt(actor: Subject(prompter.Input), prompt: String) -> Result(Nil, String) {
+  actor.call_forever(actor, StartPrompt(prompt, _))
 }
 
 fn wait_for_process(pid: process.Pid) -> Nil {
@@ -45,7 +47,7 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
           actor.InputSelectorChanged(
             driver,
             process.new_selector()
-              |> process.select_map(reply_to, prompter.UserEntered),
+              |> process.select_map(reply_to, UserEntered),
           )
         }
 
