@@ -1,10 +1,11 @@
 import drift/js/internal/event_loop.{
-  type Event, type EventLoop, HandleInput, Tick,
+  type Event, type EventLoop, AlreadyReceiving, AlreadyTicking, HandleInput,
+  Tick,
 }
 import gleam/javascript/promise.{type Promise, await}
 
 pub fn receive_when_empty_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
   use result <- await(receive_immediate(loop))
   let assert Error(Nil) = result as "should not receive when nothing sent"
@@ -13,9 +14,9 @@ pub fn receive_when_empty_test() {
 }
 
 pub fn send_before_receive_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
-  event_loop.send(loop, 42)
+  let assert Ok(Nil) = event_loop.send(loop, 42)
   use result <- await(receive_immediate(loop))
   let assert Ok(HandleInput(42)) = result as "message should be received"
 
@@ -23,10 +24,10 @@ pub fn send_before_receive_test() {
 }
 
 pub fn multiple_send_before_receive_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
-  event_loop.send(loop, 1)
-  event_loop.send(loop, 2)
+  let assert Ok(Nil) = event_loop.send(loop, 1)
+  let assert Ok(Nil) = event_loop.send(loop, 2)
 
   use result <- await(receive_immediate(loop))
   let assert Ok(HandleInput(1)) = result as "message should be received"
@@ -41,10 +42,10 @@ pub fn multiple_send_before_receive_test() {
 }
 
 pub fn receive_before_send_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
   let assert Ok(result) = event_loop.receive(loop)
-  event_loop.send(loop, 42)
+  let assert Ok(Nil) = event_loop.send(loop, 42)
 
   use result <- await(timeout(result, 0))
   let assert Ok(HandleInput(42)) = result as "message should be received"
@@ -53,13 +54,13 @@ pub fn receive_before_send_test() {
 }
 
 pub fn double_receive_is_error_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
   let _ = event_loop.receive(loop)
-  let assert Error(Nil) = event_loop.receive(loop)
+  let assert Error(AlreadyReceiving) = event_loop.receive(loop)
 }
 
 pub fn timeout_triggers_tick_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
   let assert Ok(Nil) = event_loop.set_timeout(loop, 0)
   use result <- await(receive_immediate(loop))
@@ -69,10 +70,10 @@ pub fn timeout_triggers_tick_test() {
 }
 
 pub fn send_cancels_timeout_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
   let assert Ok(Nil) = event_loop.set_timeout(loop, 10)
-  event_loop.send(loop, 0)
+  let assert Ok(Nil) = event_loop.send(loop, 0)
   use result <- await(receive_immediate(loop))
   let assert Ok(HandleInput(0)) = result
 
@@ -84,9 +85,9 @@ pub fn send_cancels_timeout_test() {
 }
 
 pub fn queued_receive_cancels_timeout_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
-  event_loop.send(loop, 0)
+  let assert Ok(Nil) = event_loop.send(loop, 0)
   let assert Ok(Nil) = event_loop.set_timeout(loop, 10)
 
   use result <- await(receive_immediate(loop))
@@ -100,10 +101,10 @@ pub fn queued_receive_cancels_timeout_test() {
 }
 
 pub fn interleaved_queued_receive_cancels_timeout_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
-  event_loop.send(loop, 0)
-  event_loop.send(loop, 1)
+  let assert Ok(Nil) = event_loop.send(loop, 0)
+  let assert Ok(Nil) = event_loop.send(loop, 1)
   let assert Ok(Nil) = event_loop.set_timeout(loop, 10)
 
   use result <- await(receive_immediate(loop))
@@ -121,10 +122,10 @@ pub fn interleaved_queued_receive_cancels_timeout_test() {
 }
 
 pub fn double_timeout_is_error_test() {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
 
   let assert Ok(Nil) = event_loop.set_timeout(loop, 0)
-  let assert Error(Nil) = event_loop.set_timeout(loop, 0)
+  let assert Error(AlreadyTicking) = event_loop.set_timeout(loop, 0)
 }
 
 pub fn receive_immediate(loop: EventLoop(i)) -> Promise(Result(Event(i), Nil)) {

@@ -3,14 +3,21 @@ import { Ok, Error, } from './gleam.mjs'
 import {
     Tick,
     HandleInput,
+    Stopped,
+    AlreadyReceiving,
+    AlreadyTicking,
 } from './drift/js/internal/event_loop.mjs';
 
 export function now() {
     return Math.round(performance.now());
 }
 
-export function init() {
+export function start() {
     return new EventLoop();
+}
+
+export function stop(loop) {
+    loop.stop();
 }
 
 export function receive(loop, handler) {
@@ -29,10 +36,20 @@ export class EventLoop {
     #queue = [];
     #handler;
     #timeout;
+    #stopped = false;
+
+    stop() {
+        this.#stopped = true;
+        this.#queue = null;
+    }
 
     receive(handler) {
+        if (this.#stopped) {
+            return new Error(new Stopped());
+        }
+
         if (this.#handler) {
-            return new Error(undefined);
+            return new Error(new AlreadyReceiving());
         }
 
         let message;
@@ -47,6 +64,10 @@ export class EventLoop {
     }
 
     send(message) {
+        if (this.#stopped) {
+            return new Error(new Stopped());
+        }
+
         this.#cancelTimeout();
 
         if (this.#handler) {
@@ -54,11 +75,17 @@ export class EventLoop {
         } else {
             this.#queue.push(message);
         }
+
+        return new Ok(undefined);
     }
 
     setTimeout(after) {
+        if (this.#stopped) {
+            return new Error(new Stopped());
+        }
+
         if (this.#timeout) {
-            return new Error(undefined);
+            return new Error(new AlreadyTicking());
         }
 
         this.#timeout = setTimeout(() => this.send(new Tick()), after);

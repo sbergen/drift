@@ -1,5 +1,7 @@
 import drift.{type Context, type Deferred, type Step}
-import drift/js/internal/event_loop.{type EventLoop, HandleInput, Tick}
+import drift/js/internal/event_loop.{
+  type EventLoop, type EventLoopError, HandleInput, Tick,
+}
 import gleam/int
 import gleam/javascript/promise.{type Promise, await}
 import gleam/list
@@ -7,11 +9,14 @@ import gleam/option.{None, Some}
 import gleam/result
 
 pub opaque type Runtime(i) {
-  Runtime(send: fn(i) -> Nil)
+  Runtime(send: fn(i) -> Result(Nil, EventLoopError))
 }
 
+/// Sends an input to be handled by the runtime.
+/// Returns an error if the runtime has been stopped.
 pub fn send(runtime: Runtime(i), input: i) -> Nil {
-  runtime.send(input)
+  let _ = runtime.send(input)
+  Nil
 }
 
 pub fn call_forever(
@@ -31,12 +36,15 @@ pub fn run(
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   handle_output: fn(io, o, fn(i) -> Nil) -> Result(io, e),
 ) -> #(Promise(Result(Nil, e)), Runtime(i)) {
-  let loop = event_loop.new()
+  let loop = event_loop.start()
   let stepper = drift.start(state)
-  let send = event_loop.send(loop, _)
-  let handle_output = fn(io, output) { handle_output(io, output, send) }
+  let send_raw = event_loop.send(loop, _)
+  let runtime = Runtime(send_raw)
+  let handle_output = fn(io, output) {
+    handle_output(io, output, send(runtime, _))
+  }
   let result = do_loop(loop, stepper, io, handle_input, handle_output)
-  #(result, Runtime(send))
+  #(result, runtime)
 }
 
 fn do_loop(
@@ -91,6 +99,11 @@ fn do_loop(
     drift.Stop(_effects) -> promise.resolve(Ok(Nil))
     drift.StopWithError(_effects, error) -> promise.resolve(Error(error))
   }
+}
+
+fn stop(loop: EventLoop(i), result: Result(a, e)) -> Promise(Result(a, e)) {
+  event_loop.stop(loop)
+  promise.resolve(result)
 }
 
 @external(javascript, "../../drift_js_external.mjs", "now")
