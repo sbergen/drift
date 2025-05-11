@@ -1,4 +1,4 @@
-name = "drift_example"
+name = "erlang_prompter"
 version = "1.0.0"
 
 # Fill out these fields if you intend to generate HTML documentation or publish
@@ -14,7 +14,10 @@ version = "1.0.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-drift = { path = "../drift" }
+drift_actor = { path = "../../drift_actor" }
+prompter = { path = "../prompter" }
+input = ">= 1.0.0 and < 2.0.0"
+gleam_erlang = ">= 1.0.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
