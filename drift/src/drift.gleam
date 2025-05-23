@@ -37,6 +37,8 @@ type Timers(i) {
 
 /// Represents a context in which effects may be applied.
 /// May hold state (or Nil, if no state is needed).
+/// An effect context can only be constructed when starting a stepper,
+/// and transformed using `map_effect_context`.
 pub opaque type EffectContext(a) {
   EffectContext(state: a)
 }
@@ -47,10 +49,13 @@ pub opaque type Effect(a) {
   Effect(effect: fn(a) -> Nil)
 }
 
+/// Constructs an effect from a function to be called with a value produced later.
 pub fn defer(effect: fn(a) -> Nil) -> Effect(a) {
   Effect(effect)
 }
 
+/// Applies an effect (by running the deferred function) in the given context
+/// with the given input.
 pub fn apply(
   ctx: EffectContext(a),
   effect: Effect(b),
@@ -60,6 +65,8 @@ pub fn apply(
   ctx
 }
 
+/// Applies a function to the state of an effect context, returning a new
+/// effect context.
 pub fn map_effect_context(
   ctx: EffectContext(a),
   fun: fn(a) -> b,
