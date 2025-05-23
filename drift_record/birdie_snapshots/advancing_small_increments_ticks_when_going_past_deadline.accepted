@@ -1,0 +1,17 @@
+---
+version: 1.3.0
+title: Advancing small increments ticks when going past deadline
+file: ./test/drift_record_test.gleam
+test_name: small_time_advance_test
+---
+  --> Add(8)
+<--   []
+  --> Divide(2)
+<--   []
+  --> Solve
+<--   [Calculating]
+  ... 6 ms:
+  ... 12 ms:
+  --> Tick
+<--   [Result(4)]
+===== Stopped!

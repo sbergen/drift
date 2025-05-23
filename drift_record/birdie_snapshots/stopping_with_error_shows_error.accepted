@@ -1,0 +1,11 @@
+---
+version: 1.3.0
+title: Stopping with error shows error
+file: ./test/drift_record_test.gleam
+test_name: stop_with_error_test
+---
+  --> Add(5)
+<--   []
+  --> Divide(0)
+<--   []
+  !!  "Div by zero!"

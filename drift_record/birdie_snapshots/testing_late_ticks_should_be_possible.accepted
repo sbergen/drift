@@ -1,0 +1,16 @@
+---
+version: 1.3.0
+title: Testing late ticks should be possible
+file: ./test/drift_record_test.gleam
+test_name: late_tick_test
+---
+  --> Add(42)
+<--   []
+  --> Divide(4)
+<--   []
+  --> Solve
+<--   [Calculating]
+  ... 20 ms:
+  --> Tick
+<--   [Result(10)]
+===== Stopped!
