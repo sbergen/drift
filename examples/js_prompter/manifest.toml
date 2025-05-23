@@ -11,6 +11,7 @@ packages = [
 ]
 
 [requirements]
+drift = { path = "../../drift" }
 drift_js = { path = "../../drift_js" }
 gleam_javascript = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }

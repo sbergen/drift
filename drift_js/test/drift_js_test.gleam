@@ -48,7 +48,7 @@ pub fn start_without_io(
   state: s,
   next: fn(Context(i, o), s, i) -> Step(s, i, o, e),
 ) -> #(Promise(Result(Nil, e)), Runtime(i)) {
-  runtime.start(state, Nil, next, fn(_, _, _) { Ok(Nil) })
+  runtime.start(state, Nil, next, fn(ctx, _, _) { Ok(ctx) })
 }
 
 fn timeout(after: Int, body: fn() -> Promise(a)) -> Promise(a) {
@@ -63,6 +63,6 @@ fn expect_incomplete(p: Promise(a), why: String) -> Promise(Nil) {
     promise.wait(0)
     |> promise.map(Ok)
   use result <- await(promise.race_list([promise.map(p, Error), timeout]))
-  let assert Ok(Nil) = result
+  let assert Ok(Nil) = result as why
   promise.resolve(Nil)
 }

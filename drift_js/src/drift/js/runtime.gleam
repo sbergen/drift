@@ -1,4 +1,4 @@
-import drift.{type Context, type Deferred, type Step}
+import drift.{type Context, type Effect, type EffectContext, type Step}
 import drift/js/internal/event_loop.{type EventLoop, HandleInput, Tick}
 import gleam/int
 import gleam/javascript/promise.{type Promise, await}
@@ -17,7 +17,7 @@ pub fn send(runtime: Runtime(i), input: i) -> Nil {
 
 pub fn call_forever(
   runtime: Runtime(i),
-  make_request: fn(Deferred(a)) -> i,
+  make_request: fn(Effect(a)) -> i,
 ) -> Promise(Result(a, Nil)) {
   let #(promise, resolve) = promise.start()
   let deferred = drift.defer(resolve)
@@ -30,10 +30,11 @@ pub fn start(
   state: s,
   io: io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-  handle_output: fn(io, o, fn(i) -> Nil) -> Result(io, e),
+  handle_output: fn(EffectContext(io), o, fn(i) -> Nil) ->
+    Result(EffectContext(io), e),
 ) -> #(Promise(Result(Nil, e)), Runtime(i)) {
   let loop = event_loop.start()
-  let stepper = drift.start(state)
+  let #(stepper, io) = drift.start(state, io)
   let send = event_loop.send(loop, _)
   let handle_output = fn(io, output) { handle_output(io, output, send) }
   let result = do_loop(loop, stepper, io, handle_input, handle_output)
@@ -60,15 +61,9 @@ fn do_loop(
 
   // Apply effects, no matter if stopped or not
   let io =
-    list.fold(next.effects, Ok(io), fn(io, effect) {
+    list.fold(next.outputs, Ok(io), fn(io, output) {
       use io <- result.try(io)
-      case effect {
-        drift.Output(output) -> handle_output(io, output)
-        drift.ResolveDeferred(resolve) -> {
-          resolve()
-          Ok(io)
-        }
-      }
+      handle_output(io, output)
     })
 
   case next {

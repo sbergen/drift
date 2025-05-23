@@ -51,8 +51,13 @@ pub fn defer(effect: fn(a) -> Nil) -> Effect(a) {
   Effect(effect)
 }
 
-pub fn apply(_: EffectContext(a), effect: Effect(b), value: b) {
+pub fn apply(
+  ctx: EffectContext(a),
+  effect: Effect(b),
+  value: b,
+) -> EffectContext(a) {
   effect.effect(value)
+  ctx
 }
 
 pub fn map_effect_context(

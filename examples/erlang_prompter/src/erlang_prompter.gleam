@@ -72,10 +72,8 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
             }),
           )
 
-        prompter.CompletePrompt(effect, value) -> {
-          drift.apply(driver, effect, value)
-          actor.IoOk(driver)
-        }
+        prompter.CompletePrompt(effect, value) ->
+          actor.IoOk(drift.apply(driver, effect, value))
       }
     })
     |> actor.start(1000, prompter.new_state(), prompter.handle_input)
