@@ -16,10 +16,6 @@ import gleam/option.{type Option, None, Some}
 pub type Timestamp =
   Int
 
-/// Represents a side effect to be applied with a value.
-/// TODO: Restrict this to be usable only with a stepper!
-pub type Effect(a) = fn(a) -> Nil
-
 /// A handle to a timer. Can be used to cancel the timer.
 pub opaque type Timer {
   Timer(id: Int)
@@ -37,6 +33,33 @@ type TimedInput(i) {
 
 type Timers(i) {
   Timers(id: Int, timers: List(TimedInput(i)))
+}
+
+/// Represents a context in which effects may be applied.
+/// May hold state (or Nil, if no state is needed).
+pub opaque type EffectContext(a) {
+  EffectContext(state: a)
+}
+
+/// Represents a side effect to be applied with a value.
+/// Can only be applied with an `EffectContext` outside of the pure context.
+pub opaque type Effect(a) {
+  Effect(effect: fn(a) -> Nil)
+}
+
+pub fn defer(effect: fn(a) -> Nil) -> Effect(a) {
+  Effect(effect)
+}
+
+pub fn apply(_: EffectContext(a), effect: Effect(b), value: b) {
+  effect.effect(value)
+}
+
+pub fn map_effect_context(
+  ctx: EffectContext(a),
+  fun: fn(a) -> b,
+) -> EffectContext(b) {
+  EffectContext(fun(ctx.state))
 }
 
 /// Represents the context in which a state is being manipulated within a step.
@@ -149,9 +172,9 @@ pub opaque type Stepper(state, input) {
   Stepper(state: state, timers: Timers(input))
 }
 
-/// Starts a new stepper with the given state.
-pub fn start(state: s) -> Stepper(s, t) {
-  Stepper(state, Timers(0, []))
+/// Starts a new stepper with the given state for the pure and effectful parts.
+pub fn start(state: s, io_state: io) -> #(Stepper(s, i), EffectContext(io)) {
+  #(Stepper(state, Timers(0, [])), EffectContext(io_state))
 }
 
 /// Represents the next state of a stepper,

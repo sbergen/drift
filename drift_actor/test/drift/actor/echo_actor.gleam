@@ -7,10 +7,10 @@ import gleam/erlang/process.{type Subject}
 
 pub fn new() -> Subject(Input) {
   let assert Ok(actor) =
-    actor.using_stateless_io(process.new_selector, fn(output) {
-      let ApplyEcho(apply, value) = output
-      apply(value)
-      actor.IoOk(Nil)
+    actor.using_io(fn() { #(Nil, process.new_selector()) }, fn(ctx, output) {
+      let ApplyEcho(effect, value) = output
+      drift.apply(ctx, effect, value)
+      actor.IoOk(ctx)
     })
     |> actor.start(100, State(0, dict.new()), handle_input)
 
@@ -20,7 +20,7 @@ pub fn new() -> Subject(Input) {
 // Generic part
 
 pub type Input {
-  Echo(String, fn(String) -> Nil)
+  Echo(String, drift.Effect(String))
   EchoAfter(String, Int, drift.Effect(String))
   FinishEcho(Int, String)
 }

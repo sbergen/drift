@@ -13,8 +13,9 @@ packages = [
 ]
 
 [requirements]
+drift = { path = "../../drift" }
 drift_actor = { path = "../../drift_actor" }
-gleam_erlang = { version = ">= 1.0.0 and < 2.0.0" }
+gleam_erlang = { version = ">= 1.0.0-rc1 and < 2.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 input = { version = ">= 1.0.0 and < 2.0.0" }

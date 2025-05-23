@@ -31,7 +31,7 @@ type Next =
   drift.Next(List(String), Input, Output, Nil)
 
 pub fn example_use_test() {
-  let state = drift.start(["Hello, World!"])
+  let #(state, _) = drift.start(["Hello, World!"], Nil)
 
   let assert Continue([], state, Some(10)) =
     state

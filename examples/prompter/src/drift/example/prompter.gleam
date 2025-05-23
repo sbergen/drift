@@ -1,7 +1,7 @@
 //// Very simple example of a functional core using drift.
 //// Doesn't do anything useful, just provides some async logic and timers.
 
-import drift.{type Deferred}
+import drift.{type Effect}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -10,7 +10,7 @@ import gleam/string
 pub opaque type State {
   State(
     completed_answers: List(String),
-    active_prompt: Option(Deferred(Result(Nil, String))),
+    active_prompt: Option(Effect(Result(Nil, String))),
   )
 }
 
@@ -18,14 +18,9 @@ pub fn new_state() -> State {
   State([], None)
 }
 
-// The types below are perhaps a bit granular for this example,
-// but demonstrate separating the different types of inputs,
-// while making some of them inaccessible publicly.
-// However, they also make the handler function clearer.
-
 /// Input type for any input we can handle.
 pub type Input {
-  StartPrompt(String, Deferred(Result(Nil, String)))
+  StartPrompt(String, Effect(Result(Nil, String)))
   UserEntered(String)
   Stop
   Handle(InternalInput)
@@ -36,6 +31,7 @@ pub type Output {
   Prompt(String)
   CancelPrompt
   Print(String)
+  CompletePrompt(Effect(Result(Nil, String)), Result(Nil, String))
 }
 
 /// Opaque type to hide inputs that shouldn't be used from the outside
@@ -55,9 +51,9 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
   case input {
     UserEntered(text) ->
       case state.active_prompt {
-        Some(deferred) ->
+        Some(complete) ->
           context
-          |> drift.resolve(deferred, Ok(Nil))
+          |> drift.output(CompletePrompt(complete, Ok(Nil)))
           |> drift.output(CancelPrompt)
         None -> panic as "No deferred value to resolve!"
       }
@@ -69,9 +65,12 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
     StartPrompt(prompt, result) -> {
       let #(context, _) =
         case state.active_prompt {
-          Some(deferred) ->
+          Some(complete) ->
             context
-            |> drift.resolve(deferred, Error("Canceled by new prompt!"))
+            |> drift.output(CompletePrompt(
+              complete,
+              Error("Canceled by new prompt!"),
+            ))
             |> drift.output(CancelPrompt)
           None -> context
         }
@@ -94,7 +93,9 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
 
     Handle(TimeOut) ->
       case state.active_prompt {
-        Some(deferred) -> context |> drift.resolve(deferred, Error("Stopping!"))
+        Some(complete) ->
+          context
+          |> drift.output(CompletePrompt(complete, Error("Stopping!")))
         None -> context
       }
       |> drift.output(Print("Too slow!"))

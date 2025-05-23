@@ -1,5 +1,6 @@
 import drift.{
-  type Context, type Effect, type Step, Continue, Stop, StopWithError,
+  type Context, type Effect, type EffectContext, type Step, Continue, Stop,
+  StopWithError,
 }
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Selector, type Subject}
@@ -18,20 +19,15 @@ pub type IoResult(state, input) {
 pub type IoDriver(state, input, output) {
   IoDriver(
     init: fn() -> #(state, Selector(input)),
-    handle_output: fn(state, output) -> IoResult(state, input),
+    handle_output: fn(EffectContext(state), output) ->
+      IoResult(EffectContext(state), input),
   )
-}
-
-pub fn using_stateless_io(
-  init: fn() -> Selector(input),
-  handle_output: fn(output) -> IoResult(Nil, input),
-) -> IoDriver(Nil, input, output) {
-  IoDriver(fn() { #(Nil, init()) }, fn(_, output) { handle_output(output) })
 }
 
 pub fn using_io(
   init: fn() -> #(state, Selector(input)),
-  handle_output: fn(state, output) -> IoResult(state, input),
+  handle_output: fn(EffectContext(state), output) ->
+    IoResult(EffectContext(state), input),
 ) -> IoDriver(state, input, output) {
   IoDriver(init, handle_output)
 }
@@ -45,7 +41,7 @@ pub fn start(
   actor.new_with_initialiser(timeout, fn(self) {
     let #(io_state, input_selector) = io_driver.init()
 
-    let stepper = drift.start(state)
+    let #(stepper, effect_ctx) = drift.start(state, io_state)
 
     let inputs = process.new_subject()
     let base_selector =
@@ -57,7 +53,7 @@ pub fn start(
       State(
         stepper:,
         timer: None,
-        io_state:,
+        effect_ctx:,
         io_driver:,
         self:,
         base_selector:,
@@ -85,7 +81,7 @@ pub fn call_forever(
   make_request: fn(Effect(reply)) -> message,
 ) -> reply {
   process.call_forever(subject, fn(reply_to) {
-    make_request(process.send(reply_to, _))
+    make_request(drift.defer(process.send(reply_to, _)))
   })
 }
 
@@ -95,7 +91,7 @@ pub fn call(
   sending make_request: fn(Effect(reply)) -> message,
 ) -> reply {
   process.call(subject, timeout, fn(reply_to) {
-    make_request(process.send(reply_to, _))
+    make_request(drift.defer(process.send(reply_to, _)))
   })
 }
 
@@ -110,7 +106,7 @@ type State(state, io, input, output, error) {
   State(
     stepper: drift.Stepper(state, input),
     timer: Option(process.Timer),
-    io_state: io,
+    effect_ctx: EffectContext(io),
     io_driver: IoDriver(io, input, output),
     self: Subject(Msg(input)),
     base_selector: Selector(Msg(input)),
@@ -141,7 +137,7 @@ fn handle_message(
 
   // Apply effects, no matter if stopped or not
   let io_result =
-    list.fold(next.outputs, IoOk(state.io_state), fn(io_state, output) {
+    list.fold(next.outputs, IoOk(state.effect_ctx), fn(io_state, output) {
       use io_state <- bind_io(io_state)
       state.io_driver.handle_output(io_state, output)
     })
@@ -158,10 +154,10 @@ fn handle_message(
       let state = State(..state, stepper:, timer:)
 
       case io_result {
-        IoOk(io_state) -> actor.continue(State(..state, io_state:))
-        InputSelectorChanged(io_state, selector) ->
+        IoOk(effect_ctx) -> actor.continue(State(..state, effect_ctx:))
+        InputSelectorChanged(effect_ctx, selector) ->
           actor.with_selector(
-            actor.continue(State(..state, io_state:)),
+            actor.continue(State(..state, effect_ctx:)),
             selector
               |> process.map_selector(HandleInput)
               |> process.merge_selector(state.base_selector),
