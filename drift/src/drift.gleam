@@ -16,6 +16,10 @@ import gleam/option.{type Option, None, Some}
 pub type Timestamp =
   Int
 
+/// Represents a side effect to be applied with a value.
+/// TODO: Restrict this to be usable only with a stepper!
+pub type Effect(a) = fn(a) -> Nil
+
 /// A handle to a timer. Can be used to cancel the timer.
 pub opaque type Timer {
   Timer(id: Int)
@@ -35,35 +39,10 @@ type Timers(i) {
   Timers(id: Int, timers: List(TimedInput(i)))
 }
 
-/// Represents a deferred future value that can be resolved later.
-pub opaque type Deferred(a) {
-  Deferred(resolve: fn(a) -> Nil)
-}
-
-/// Builds a value that can be used to resolve a deferred value later
-/// with the given function.
-pub fn defer(resolve: fn(a) -> Nil) -> Deferred(a) {
-  Deferred(resolve)
-}
-
-/// An effect to be applied to the context outside of the pure core.
-pub type Effect(output) {
-  /// Applies an output with the outside contexts I/O model.
-  Output(output)
-  /// Resolves a deferred value by executing the function.
-  /// Execution is left to be done by the outside context,
-  /// so that the stepping stays purely functional.
-  ResolveDeferred(fn() -> Nil)
-}
-
 /// Represents the context in which a state is being manipulated within a step.
 /// Can be used to add side effects while executing a step.
 pub opaque type Context(input, output) {
-  Context(
-    start_time: Timestamp,
-    timers: Timers(input),
-    effects: List(Effect(output)),
-  )
+  Context(start_time: Timestamp, timers: Timers(input), outputs: List(output))
 }
 
 /// Gets the current timestamp from the context.
@@ -118,22 +97,12 @@ pub fn cancel_all_timers(context: Context(i, o)) -> Context(i, o) {
 
 /// Returns a new context with the given output added.
 pub fn output(context: Context(i, o), output: o) -> Context(i, o) {
-  Context(..context, effects: [Output(output), ..context.effects])
+  Context(..context, outputs: [output, ..context.outputs])
 }
 
 /// Returns a new context with the given outputs added.
 pub fn output_many(context: Context(i, o), outputs: List(o)) -> Context(i, o) {
   list.fold(outputs, context, output)
-}
-
-/// Returns a new context which will resolve the deferred value to the given value.
-pub fn resolve(
-  context: Context(i, o),
-  deferred: Deferred(a),
-  result: a,
-) -> Context(i, o) {
-  let resolve = fn() { deferred.resolve(result) }
-  Context(..context, effects: [ResolveDeferred(resolve), ..context.effects])
 }
 
 /// An ongoing stepper update, which may update the state, timers,
@@ -142,7 +111,7 @@ pub fn resolve(
 /// it can no longer be continued.
 pub opaque type Step(state, input, output, error) {
   ContinueStep(context: Context(input, output), state: state)
-  StopStep(effects: List(Effect(output)), error: Option(error))
+  StopStep(outputs: List(output), error: Option(error))
 }
 
 /// If a step hasn't terminated, extracts the context and state from the step,
@@ -166,13 +135,13 @@ pub fn with_state(context: Context(i, o), state: s) -> Step(s, i, o, e) {
 /// Terminates a step without error.
 /// All effects in the context will still be applied.
 pub fn stop(context: Context(i, o)) -> Step(_, i, o, _) {
-  StopStep(context.effects, None)
+  StopStep(context.outputs, None)
 }
 
 /// Terminates a step with and error.
 /// All effects in the context will still be applied.
 pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
-  StopStep(context.effects, Some(error))
+  StopStep(context.outputs, Some(error))
 }
 
 /// Holds the current state and active timers.
@@ -192,16 +161,16 @@ pub type Next(state, input, output, error) {
   /// effects should be applied, and if due_time is `Some`,
   /// `tick` should be called at that time.
   Continue(
-    effects: List(Effect(output)),
+    outputs: List(output),
     state: Stepper(state, input),
     due_time: Option(Timestamp),
   )
 
-  Stop(effects: List(Effect(output)))
+  Stop(outputs: List(output))
 
   /// Execution of the stepper should stop with the final effects applied.
   /// The given error should be applied in the executing context
-  StopWithError(effects: List(Effect(output)), error: error)
+  StopWithError(outputs: List(output), error: error)
 }
 
 /// Triggers all expired timers, and returns the next state of the stepper.

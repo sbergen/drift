@@ -1,5 +1,5 @@
 import drift.{
-  type Context, type Deferred, type Step, Continue, Stop, StopWithError,
+  type Context, type Effect, type Step, Continue, Stop, StopWithError,
 }
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Selector, type Subject}
@@ -22,8 +22,11 @@ pub type IoDriver(state, input, output) {
   )
 }
 
-pub fn without_io() -> IoDriver(Nil, input, output) {
-  IoDriver(fn() { #(Nil, process.new_selector()) }, fn(state, _) { IoOk(state) })
+pub fn using_stateless_io(
+  init: fn() -> Selector(input),
+  handle_output: fn(output) -> IoResult(Nil, input),
+) -> IoDriver(Nil, input, output) {
+  IoDriver(fn() { #(Nil, init()) }, fn(_, output) { handle_output(output) })
 }
 
 pub fn using_io(
@@ -79,20 +82,20 @@ pub fn start(
 
 pub fn call_forever(
   subject: Subject(message),
-  make_request: fn(Deferred(reply)) -> message,
+  make_request: fn(Effect(reply)) -> message,
 ) -> reply {
-  process.call_forever(subject, fn(reply) {
-    make_request(drift.defer(process.send(reply, _)))
+  process.call_forever(subject, fn(reply_to) {
+    make_request(process.send(reply_to, _))
   })
 }
 
 pub fn call(
   subject: Subject(message),
   waiting timeout: Int,
-  sending make_request: fn(Deferred(reply)) -> message,
+  sending make_request: fn(Effect(reply)) -> message,
 ) -> reply {
-  process.call(subject, timeout, fn(reply) {
-    make_request(drift.defer(process.send(reply, _)))
+  process.call(subject, timeout, fn(reply_to) {
+    make_request(process.send(reply_to, _))
   })
 }
 
@@ -138,15 +141,9 @@ fn handle_message(
 
   // Apply effects, no matter if stopped or not
   let io_result =
-    list.fold(next.effects, IoOk(state.io_state), fn(io_state, effect) {
+    list.fold(next.outputs, IoOk(state.io_state), fn(io_state, output) {
       use io_state <- bind_io(io_state)
-      case effect {
-        drift.Output(output) -> state.io_driver.handle_output(io_state, output)
-        drift.ResolveDeferred(resolve) -> {
-          resolve()
-          IoOk(io_state)
-        }
-      }
+      state.io_driver.handle_output(io_state, output)
     })
 
   case next {

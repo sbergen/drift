@@ -7,7 +7,11 @@ import gleam/erlang/process.{type Subject}
 
 pub fn new() -> Subject(Input) {
   let assert Ok(actor) =
-    actor.without_io()
+    actor.using_stateless_io(process.new_selector, fn(output) {
+      let ApplyEcho(apply, value) = output
+      apply(value)
+      actor.IoOk(Nil)
+    })
     |> actor.start(100, State(0, dict.new()), handle_input)
 
   actor
@@ -16,26 +20,30 @@ pub fn new() -> Subject(Input) {
 // Generic part
 
 pub type Input {
-  Echo(String, drift.Deferred(String))
-  EchoAfter(String, Int, drift.Deferred(String))
+  Echo(String, fn(String) -> Nil)
+  EchoAfter(String, Int, drift.Effect(String))
   FinishEcho(Int, String)
 }
 
+pub type Output {
+  ApplyEcho(drift.Effect(String), String)
+}
+
 type State {
-  State(id: Int, calls: Dict(Int, drift.Deferred(String)))
+  State(id: Int, calls: Dict(Int, drift.Effect(String)))
 }
 
 type Context =
-  drift.Context(Input, Nil)
+  drift.Context(Input, Output)
 
 type Step =
-  drift.Step(State, Input, Nil, Nil)
+  drift.Step(State, Input, Output, Nil)
 
 fn handle_input(context: Context, state: State, input: Input) -> Step {
   case input {
-    Echo(value, to) ->
+    Echo(value, reply_to) ->
       context
-      |> drift.resolve(to, value)
+      |> drift.output(ApplyEcho(reply_to, value))
       |> drift.with_state(state)
 
     EchoAfter(value, after, reply_to) -> {
@@ -49,7 +57,7 @@ fn handle_input(context: Context, state: State, input: Input) -> Step {
 
     FinishEcho(id, value) ->
       case dict.get(state.calls, id) {
-        Ok(reply_to) -> context |> drift.resolve(reply_to, value)
+        Ok(reply_to) -> context |> drift.output(ApplyEcho(reply_to, value))
         Error(_) -> context
       }
       |> drift.with_state(state)

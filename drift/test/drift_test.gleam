@@ -57,7 +57,7 @@ pub fn example_use_test() {
 
   let assert Continue([], state, Some(30)) = drift.tick(state, 20, apply_input)
 
-  let assert Continue([drift.Output(Print(log))], state, Some(30)) =
+  let assert Continue([Print(log)], state, Some(30)) =
     step(state, 25, PrintMe, apply_input)
 
   let assert drift.Stop([]) = step(state, 25, Stop, apply_input)
