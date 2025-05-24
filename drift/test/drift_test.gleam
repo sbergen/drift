@@ -36,9 +36,9 @@ pub fn example_use_test() {
   let assert Continue([], state, Some(10)) =
     state
     |> drift.begin_step(0)
-    |> drift.continue(fn(context, state) {
+    |> drift.chain(fn(context, state) {
       let #(context, _) = drift.handle_after(context, 10, PrintTime)
-      context |> drift.with_state(state)
+      context |> drift.continue(state)
     })
     |> drift.end_step()
 
@@ -73,7 +73,7 @@ fn step(
 ) -> Next {
   state
   |> drift.begin_step(now)
-  |> drift.continue(fn(e, i) { apply(e, i, input) })
+  |> drift.chain(fn(e, i) { apply(e, i, input) })
   |> drift.end_step()
 }
 
@@ -82,7 +82,7 @@ fn apply_input(context: Context, lines: List(String), input: Input) -> Step {
     Append(message) -> {
       let now = drift.now(context)
       context
-      |> drift.with_state([string.inspect(now) <> ": " <> message, ..lines])
+      |> drift.continue([string.inspect(now) <> ": " <> message, ..lines])
     }
 
     PrintMe -> {
@@ -92,17 +92,17 @@ fn apply_input(context: Context, lines: List(String), input: Input) -> Step {
         |> list.reverse
         |> string.join("\n"),
       ))
-      |> drift.with_state(lines)
+      |> drift.continue(lines)
     }
 
     PrintTime -> {
       let now = drift.now(context)
       let new_line = "It's now: " <> string.inspect(now)
       let #(context, _) = drift.handle_after(context, 10, PrintTime)
-      context |> drift.with_state(list.prepend(lines, new_line))
+      context |> drift.continue(list.prepend(lines, new_line))
     }
 
-    Yank -> context |> drift.with_state(list.drop(lines, 1))
+    Yank -> context |> drift.continue(list.drop(lines, 1))
     Stop -> context |> drift.stop()
   }
 }

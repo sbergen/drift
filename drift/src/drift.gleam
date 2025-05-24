@@ -151,7 +151,7 @@ pub opaque type Step(state, input, output, error) {
 
 /// If a step hasn't terminated, extracts the context and state from the step,
 /// and returns a new step from the given function.
-pub fn continue(
+pub fn chain(
   step: Step(s, i, o, e),
   f: fn(Context(i, o), s) -> Step(s, i, o, e),
 ) -> Step(s, i, o, e) {
@@ -161,19 +161,19 @@ pub fn continue(
   }
 }
 
-/// Terminates a step by linking the given state to the context.
-/// /// All effects in the context will be applied.
-pub fn with_state(context: Context(i, o), state: s) -> Step(s, i, o, e) {
+/// Continues stepping by linking the given state to the context.
+/// All effects in the context will be applied.
+pub fn continue(context: Context(i, o), state: s) -> Step(s, i, o, e) {
   ContinueStep(context, state)
 }
 
-/// Terminates a step without error.
+/// Terminates the stepper without error.
 /// All effects in the context will still be applied.
 pub fn stop(context: Context(i, o)) -> Step(_, i, o, _) {
   StopStep(context.outputs, None)
 }
 
-/// Terminates a step with and error.
+/// Terminates the stepper with an error.
 /// All effects in the context will still be applied.
 pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
   StopStep(context.outputs, Some(error))
@@ -241,7 +241,7 @@ pub fn step(
 ) -> Next(s, i, o, e) {
   stepper
   |> begin_step(now)
-  |> continue(fn(context, state) { apply(context, state, input) })
+  |> chain(fn(context, state) { apply(context, state, input) })
   |> end_step()
 }
 
