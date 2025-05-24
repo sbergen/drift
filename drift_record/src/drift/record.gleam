@@ -65,6 +65,10 @@ pub fn to_log(recorder: Recorder(s, i, o, e)) -> String {
   string.trim_end(recorder.log)
 }
 
+pub fn discard() -> drift.Effect(a) {
+  drift.defer(fn(_) { Nil })
+}
+
 fn assert_ticks_exhausted(
   recorder: Recorder(s, i, o, e),
 ) -> Recorder(s, i, o, e) {
@@ -88,7 +92,7 @@ fn step_or_tick(
 ) -> Recorder(s, i, o, e) {
   use <- bool.lazy_guard(recorder.stopped, fn() {
     let log =
-      recorder.log <> "  !!  Already stopped, ignoring: " <> description <> "\n"
+      recorder.log <> " =!!= Already stopped, ignoring: " <> description <> "\n"
     Recorder(..recorder, log:)
   })
 

@@ -224,7 +224,7 @@ pub fn tick(
   |> list.sort(fn(a, b) { int.compare(a.due_time, b.due_time) })
   |> list.fold(ContinueStep(Context(now, timers, []), state), fn(next, timer) {
     case next {
-      ContinueStep(effects, state) -> apply(effects, state, timer.input)
+      ContinueStep(context, state) -> apply(context, state, timer.input)
       other -> other
     }
   })
