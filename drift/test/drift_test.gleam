@@ -27,9 +27,6 @@ type Step =
 type Context =
   drift.Context(Input, Output)
 
-type Next =
-  drift.Next(List(String), Input, Output, Nil)
-
 pub fn example_use_test() {
   let #(state, _) = drift.start(["Hello, World!"], Nil)
 
@@ -43,38 +40,27 @@ pub fn example_use_test() {
     |> drift.end_step()
 
   let assert Continue([], state, Some(10)) =
-    step(state, 0, Append("Wibble!"), apply_input)
+    drift.step(state, 0, Append("Wibble!"), apply_input)
 
   let assert Continue([], state, Some(20)) = drift.tick(state, 10, apply_input)
 
   let assert Continue([], state, Some(20)) =
-    step(state, 15, Append("Wobble"), apply_input)
+    drift.step(state, 15, Append("Wobble"), apply_input)
 
   let assert Continue([], state, Some(20)) =
-    step(state, 16, Append("Wobble"), apply_input)
+    drift.step(state, 16, Append("Wobble"), apply_input)
 
-  let assert Continue([], state, Some(20)) = step(state, 17, Yank, apply_input)
+  let assert Continue([], state, Some(20)) =
+    drift.step(state, 17, Yank, apply_input)
 
   let assert Continue([], state, Some(30)) = drift.tick(state, 20, apply_input)
 
   let assert Continue([Print(log)], state, Some(30)) =
-    step(state, 25, PrintMe, apply_input)
+    drift.step(state, 25, PrintMe, apply_input)
 
-  let assert drift.Stop([]) = step(state, 25, Stop, apply_input)
+  let assert drift.Stop([]) = drift.step(state, 25, Stop, apply_input)
 
   birdie.snap(log, "Demonstrate some basic usage")
-}
-
-fn step(
-  state: drift.Stepper(List(String), Input),
-  now: drift.Timestamp,
-  input: Input,
-  apply: fn(Context, List(String), Input) -> Step,
-) -> Next {
-  state
-  |> drift.begin_step(now)
-  |> drift.chain(fn(e, i) { apply(e, i, input) })
-  |> drift.end_step()
 }
 
 fn apply_input(context: Context, lines: List(String), input: Input) -> Step {
