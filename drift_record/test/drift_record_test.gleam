@@ -43,6 +43,16 @@ pub fn stop_with_error_test() {
   record.new(0, calculator.handle_input, string.inspect)
   |> record.input(calculator.Add(5))
   |> record.input(calculator.Divide(0))
+  |> record.input(calculator.Divide(1))
   |> record.to_log
   |> birdie.snap("Stopping with error shows error")
+}
+
+pub fn input_after_stop_test() {
+  record.new(0, calculator.handle_input, string.inspect)
+  |> record.input(calculator.Solve)
+  |> record.time_advance(10)
+  |> record.input(calculator.Solve)
+  |> record.to_log
+  |> birdie.snap("Inputs are ignored after stopping")
 }

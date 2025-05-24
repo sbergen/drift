@@ -1,4 +1,5 @@
 import drift.{type Context, type Step, type Timestamp}
+import gleam/bool
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -11,6 +12,7 @@ pub opaque type Recorder(s, i, o, e) {
     next_tick: Option(Timestamp),
     time: Timestamp,
     log: String,
+    stopped: Bool,
   )
 }
 
@@ -20,7 +22,7 @@ pub fn new(
   format_output: fn(o) -> String,
 ) -> Recorder(s, i, o, e) {
   let #(stepper, _effect_ctx) = drift.start(state, Nil)
-  Recorder(stepper, apply_input, format_output, None, 0, "")
+  Recorder(stepper, apply_input, format_output, None, 0, "", False)
 }
 
 pub fn input(recorder: Recorder(s, i, o, e), input: i) -> Recorder(s, i, o, e) {
@@ -84,6 +86,12 @@ fn step_or_tick(
   input: Option(i),
   description: String,
 ) -> Recorder(s, i, o, e) {
+  use <- bool.lazy_guard(recorder.stopped, fn() {
+    let log =
+      recorder.log <> "  !!  Already stopped, ignoring: " <> description <> "\n"
+    Recorder(..recorder, log:)
+  })
+
   let log = recorder.log <> "  --> " <> description <> "\n"
 
   let next = case input {
@@ -104,12 +112,12 @@ fn step_or_tick(
 
     drift.Stop(_outputs) -> {
       let log = log <> "===== Stopped!\n"
-      Recorder(..recorder, log:, next_tick: None)
+      Recorder(..recorder, log:, next_tick: None, stopped: True)
     }
 
     drift.StopWithError(_outputs, error) -> {
       let log = log <> "  !!  " <> string.inspect(error) <> "\n"
-      Recorder(..recorder, log:, next_tick: None)
+      Recorder(..recorder, log:, next_tick: None, stopped: True)
     }
   }
 }

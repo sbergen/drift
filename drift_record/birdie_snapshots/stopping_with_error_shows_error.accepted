@@ -9,3 +9,4 @@ test_name: stop_with_error_test
   --> Divide(0)
 <--   []
   !!  "Div by zero!"
+  !!  Already stopped, ignoring: Divide(1)
