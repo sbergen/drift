@@ -90,13 +90,12 @@ fn format_echoer() -> format.Formatter(
       case input {
         echoer.Echo(effect, value, times) -> {
           use effect <- format.map(formatter, effect.inspect, effect)
-          "Echo("
-          <> effect
-          <> ", "
+          "Echo "
           <> string.inspect(value)
-          <> ", "
+          <> " "
           <> string.inspect(times)
-          <> ")"
+          <> " times, using "
+          <> effect
         }
       }
 
@@ -105,7 +104,7 @@ fn format_echoer() -> format.Formatter(
         echoer.Reply(action) -> {
           let assert Ok(action) =
             effect.inspect_action(formatter, action, string.inspect)
-          #(formatter, "Reply(" <> action <> ")")
+          #(formatter, "Reply: " <> action <> "")
         }
       }
   }

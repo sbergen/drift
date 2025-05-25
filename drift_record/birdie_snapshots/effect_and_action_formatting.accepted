@@ -4,9 +4,9 @@ title: Effect and action formatting
 file: ./test/drift_record_test.gleam
 test_name: effects_and_actions_test
 ---
-  --> Echo(Effect#0, "Hello!", 1)
-<--   Reply(Effect#0("Hello!"))
-  --> Echo(Effect#1, "Hello again!!!", 3)
-<--   Reply(Effect#1("Hello again!!!"))
-      Reply(Effect#1("Hello again!!!"))
-      Reply(Effect#1("Hello again!!!"))
+  --> Echo "Hello!" 1 times, using Effect#0
+<--   Reply: Effect#0("Hello!")
+  --> Echo "Hello again!!!" 3 times, using Effect#1
+<--   Reply: Effect#1("Hello again!!!")
+      Reply: Effect#1("Hello again!!!")
+      Reply: Effect#1("Hello again!!!")
