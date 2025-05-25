@@ -5,9 +5,9 @@ file: ./test/drift_record_test.gleam
 test_name: input_after_stop_test
 ---
   --> Solve
-<--   [Calculating]
+<--   Calculating
   ... 10 ms:
   --> Tick
-<--   [Result(0)]
+<--   Result(0)
 ===== Stopped!
  =!!= Already stopped, ignoring: Solve

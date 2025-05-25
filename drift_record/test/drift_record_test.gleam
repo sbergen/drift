@@ -62,8 +62,8 @@ pub fn input_after_stop_test() {
 
 pub fn effects_and_actions_test() {
   record.new(Nil, echoer.handle_input, format_echoer())
-  |> record.input(echoer.Echo(discard(), "Hello!"))
-  |> record.input(echoer.Echo(discard(), "Hello again!"))
+  |> record.input(echoer.Echo(discard(), "Hello!", 1))
+  |> record.input(echoer.Echo(discard(), "Hello again!!!", 3))
   |> record.to_log
   |> birdie.snap("Effect and action formatting")
 }
@@ -88,9 +88,15 @@ fn format_echoer() -> format.Formatter(
   case msg {
     record.Input(input) ->
       case input {
-        echoer.Echo(effect, value) -> {
+        echoer.Echo(effect, value, times) -> {
           use effect <- format.map(formatter, effect.inspect, effect)
-          "Echo(" <> effect <> ", " <> string.inspect(value) <> ")"
+          "Echo("
+          <> effect
+          <> ", "
+          <> string.inspect(value)
+          <> ", "
+          <> string.inspect(times)
+          <> ")"
         }
       }
 

@@ -5,12 +5,10 @@ file: ./test/drift_record_test.gleam
 test_name: late_tick_test
 ---
   --> Add(42)
-<--   []
   --> Divide(4)
-<--   []
   --> Solve
-<--   [Calculating]
+<--   Calculating
   ... 20 ms:
   --> Tick
-<--   [Result(10)]
+<--   Result(10)
 ===== Stopped!

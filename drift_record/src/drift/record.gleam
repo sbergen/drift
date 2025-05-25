@@ -110,7 +110,7 @@ fn step_or_tick(
 
   let #(formatter, outputs) =
     format.list(recorder.formatter, list.map(next.outputs, Output))
-  let log = log <> "<--   " <> format_list("", outputs) <> "\n"
+  let log = output_list(log, True, outputs)
 
   case next {
     drift.Continue(_outputs, stepper, next_tick) ->
@@ -128,11 +128,14 @@ fn step_or_tick(
   }
 }
 
-// Can't use string.inspect on a list of strings, as it adds quotes
-fn format_list(str: String, values: List(String)) -> String {
-  case str, values {
-    str, [] -> "[" <> str <> "]"
-    "", [head, ..rest] -> format_list(head, rest)
-    str, [head, ..rest] -> format_list(str <> ", " <> head, rest)
+fn output_list(log: String, first: Bool, values: List(String)) -> String {
+  case first, values {
+    _, [] -> log
+    True, [head, ..rest] ->
+      { log <> "<--   " <> head <> "\n" }
+      |> output_list(False, rest)
+    False, [head, ..rest] ->
+      { log <> "      " <> head <> "\n" }
+      |> output_list(False, rest)
   }
 }

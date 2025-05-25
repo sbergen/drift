@@ -2,9 +2,10 @@
 
 import drift
 import drift/effect.{type Action, type Effect}
+import gleam/list
 
 pub type Input {
-  Echo(Effect(String), String)
+  Echo(Effect(String), String, Int)
 }
 
 pub type Output {
@@ -16,9 +17,10 @@ pub fn handle_input(
   state: Nil,
   input: Input,
 ) -> drift.Step(Nil, Input, Output, String) {
-  let Echo(complete, value) = input
+  let Echo(complete, value, times) = input
+  let outputs = list.repeat(Reply(effect.bind(complete, value)), times)
 
   context
-  |> drift.perform(Reply, complete, value)
+  |> drift.output_many(outputs)
   |> drift.continue(state)
 }

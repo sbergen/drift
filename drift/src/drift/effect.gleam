@@ -90,3 +90,9 @@ pub fn inspect_action(
   use id <- result.map(dict.get(formatter.ids, action.effect.ref))
   "Effect#" <> string.inspect(id) <> "(" <> inspect(action.arg) <> ")"
 }
+
+/// Not usually necessary, mostly for testing:
+/// Extracts the argument from an action.
+pub fn extract_arg(action: Action(a)) -> a {
+  action.arg
+}
