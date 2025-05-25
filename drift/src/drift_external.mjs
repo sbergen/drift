@@ -1,11 +1,9 @@
-let refcount = 0;
+let effect_id = 0;
 
-class Reference {
-    constructor() {
-        this.id = refcount++;
-    }
+export function get_effect_id() {
+    return ++effect_id;
 }
 
-export function make_ref() {
-    return new Reference();
+export function reset_effect_id() {
+    effect_id = 0;
 }

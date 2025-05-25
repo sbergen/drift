@@ -1,0 +1,8 @@
+---
+version: 1.3.0
+title: Effect ids should be reset to 1
+---
+  --> Echo "Hello!" 1 times
+        - Using effect #1
+<--   Reply: "Hello!"
+        - Using effect #1

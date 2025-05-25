@@ -2,7 +2,6 @@ import birdie
 import calculator
 import drift/effect
 import drift/record.{discard}
-import drift/record/format
 import echoer
 import gleam/string
 import gleeunit
@@ -12,7 +11,7 @@ pub fn main() -> Nil {
 }
 
 pub fn small_time_advance_test() {
-  record.new(0, calculator.handle_input, format_calculator())
+  record.new(0, calculator.handle_input, format_calculator)
   |> record.input(calculator.Add(8))
   |> record.input(calculator.Divide(2))
   |> record.input(calculator.Solve)
@@ -23,7 +22,7 @@ pub fn small_time_advance_test() {
 }
 
 pub fn late_tick_test() {
-  record.new(0, calculator.handle_input, format_calculator())
+  record.new(0, calculator.handle_input, format_calculator)
   |> record.input(calculator.Add(42))
   |> record.input(calculator.Divide(4))
   |> record.input(calculator.Solve)
@@ -33,7 +32,7 @@ pub fn late_tick_test() {
 }
 
 pub fn exact_tick_test() {
-  record.new(0, calculator.handle_input, format_calculator())
+  record.new(0, calculator.handle_input, format_calculator)
   |> record.input(calculator.Add(42))
   |> record.input(calculator.Divide(4))
   |> record.input(calculator.Solve)
@@ -43,7 +42,7 @@ pub fn exact_tick_test() {
 }
 
 pub fn stop_with_error_test() {
-  record.new(0, calculator.handle_input, format_calculator())
+  record.new(0, calculator.handle_input, format_calculator)
   |> record.input(calculator.Add(5))
   |> record.input(calculator.Divide(0))
   |> record.input(calculator.Divide(1))
@@ -52,7 +51,7 @@ pub fn stop_with_error_test() {
 }
 
 pub fn input_after_stop_test() {
-  record.new(0, calculator.handle_input, format_calculator())
+  record.new(0, calculator.handle_input, format_calculator)
   |> record.input(calculator.Solve)
   |> record.time_advance(10)
   |> record.input(calculator.Solve)
@@ -61,51 +60,56 @@ pub fn input_after_stop_test() {
 }
 
 pub fn effects_and_actions_test() {
-  record.new(Nil, echoer.handle_input, format_echoer())
+  record.new(Nil, echoer.handle_input, format_echoer)
   |> record.input(echoer.Echo(discard(), "Hello!", 1))
   |> record.input(echoer.Echo(discard(), "Hello again!!!", 3))
   |> record.to_log
   |> birdie.snap("Effect and action formatting")
 }
 
-fn format_calculator() -> format.Formatter(
-  Nil,
-  record.Message(calculator.Input, calculator.Output),
-) {
-  use msg <- format.stateless()
+pub fn effects_id_reset_test() {
+  record.new(Nil, echoer.handle_input, format_echoer)
+  |> record.input(echoer.Echo(discard(), "Hello!", 1))
+  |> record.to_log
+  |> birdie.snap("Effect ids should be reset to 1")
+}
+
+pub fn foo_test() {
+  let a = format_calculator
+  let b = format_calculator
+  echo a == b
+}
+
+fn format_calculator(
+  msg: record.Message(calculator.Input, calculator.Output),
+) -> String {
   case msg {
     record.Input(i) -> string.inspect(i)
     record.Output(o) -> string.inspect(o)
   }
 }
 
-fn format_echoer() -> format.Formatter(
-  effect.Formatter,
-  record.Message(echoer.Input, echoer.Output),
-) {
-  use formatter, msg <- format.stateful(effect.new_formatter())
-
+fn format_echoer(msg: record.Message(echoer.Input, echoer.Output)) -> String {
   case msg {
     record.Input(input) ->
       case input {
         echoer.Echo(effect, value, times) -> {
-          use effect <- format.map(effect.inspect(formatter, effect))
           "Echo "
           <> string.inspect(value)
           <> " "
           <> string.inspect(times)
-          <> " times\n  - Using "
-          <> effect
+          <> " times\n  - Using effect #"
+          <> string.inspect(effect.id(effect))
         }
       }
 
     record.Output(output) ->
       case output {
-        echoer.Reply(action) -> {
-          let assert Ok(action) =
-            effect.inspect_action(formatter, action, string.inspect)
-          #(formatter, "Reply:\n  - " <> action <> "")
-        }
+        echoer.Reply(action) ->
+          "Reply: "
+          <> string.inspect(action.argument)
+          <> "\n  - Using effect #"
+          <> string.inspect(effect.id(action.effect))
       }
   }
 }
