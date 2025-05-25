@@ -1,4 +1,5 @@
 import drift.{type Context, type Step, type Timestamp}
+import drift/effect.{type Effect}
 import gleam/bool
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -65,8 +66,8 @@ pub fn to_log(recorder: Recorder(s, i, o, e)) -> String {
   string.trim_end(recorder.log)
 }
 
-pub fn discard() -> drift.Effect(a) {
-  drift.defer(fn(_) { Nil })
+pub fn discard() -> Effect(a) {
+  effect.from(fn(_) { Nil })
 }
 
 fn assert_ticks_exhausted(

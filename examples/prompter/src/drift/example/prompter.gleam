@@ -1,7 +1,8 @@
 //// Very simple example of a functional core using drift.
 //// Doesn't do anything useful, just provides some async logic and timers.
 
-import drift.{type Effect}
+import drift
+import drift/effect.{type Action, type Effect}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -31,7 +32,7 @@ pub type Output {
   Prompt(String)
   CancelPrompt
   Print(String)
-  CompletePrompt(Effect(Result(Nil, String)), Result(Nil, String))
+  CompletePrompt(Action(Result(Nil, String)))
 }
 
 /// Opaque type to hide inputs that shouldn't be used from the outside
@@ -53,12 +54,12 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
       case state.active_prompt {
         Some(complete) ->
           context
-          |> drift.output(CompletePrompt(complete, Ok(Nil)))
+          |> drift.perform(CompletePrompt, complete, Ok(Nil))
           |> drift.output(CancelPrompt)
         None -> panic as "No deferred value to resolve!"
       }
       |> drift.cancel_all_timers()
-      |> drift.with_state(
+      |> drift.continue(
         State(..state, completed_answers: [text, ..state.completed_answers]),
       )
 
@@ -67,17 +68,18 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
         case state.active_prompt {
           Some(complete) ->
             context
-            |> drift.output(CompletePrompt(
+            |> drift.perform(
+              CompletePrompt,
               complete,
               Error("Canceled by new prompt!"),
-            ))
+            )
             |> drift.output(CancelPrompt)
           None -> context
         }
         |> drift.output(Prompt(prompt))
         |> drift.handle_after(2000, Handle(TimeOut))
 
-      context |> drift.with_state(State(..state, active_prompt: Some(result)))
+      context |> drift.continue(State(..state, active_prompt: Some(result)))
     }
 
     Stop ->
@@ -95,7 +97,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
       case state.active_prompt {
         Some(complete) ->
           context
-          |> drift.output(CompletePrompt(complete, Error("Stopping!")))
+          |> drift.perform(CompletePrompt, complete, Error("Stopping!"))
         None -> context
       }
       |> drift.output(Print("Too slow!"))

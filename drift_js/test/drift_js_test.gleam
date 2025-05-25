@@ -37,7 +37,7 @@ pub fn call_forever_after_stopped_test() {
 }
 
 fn noop(ctx: Context(i, o), state: s, _: i) -> Step(s, i, o, e) {
-  ctx |> drift.with_state(state)
+  ctx |> drift.continue(state)
 }
 
 fn stop(ctx: Context(i, o), _tate: s, _: i) -> Step(s, i, o, e) {

@@ -1,4 +1,5 @@
-import drift.{type Context, type Effect, type EffectContext, type Step}
+import drift.{type Context, type Step}
+import drift/effect.{type Effect}
 import drift/js/internal/event_loop.{type EventLoop, HandleInput, Tick}
 import gleam/int
 import gleam/javascript/promise.{type Promise, await}
@@ -20,7 +21,7 @@ pub fn call_forever(
   make_request: fn(Effect(a)) -> i,
 ) -> Promise(Result(a, Nil)) {
   let #(promise, resolve) = promise.start()
-  let deferred = drift.defer(resolve)
+  let deferred = effect.from(resolve)
 
   event_loop.send(runtime.loop, make_request(deferred))
   event_loop.error_if_stopped(runtime.loop, promise, Nil)
@@ -30,8 +31,8 @@ pub fn start(
   state: s,
   io: io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-  handle_output: fn(EffectContext(io), o, fn(i) -> Nil) ->
-    Result(EffectContext(io), e),
+  handle_output: fn(effect.Context(io), o, fn(i) -> Nil) ->
+    Result(effect.Context(io), e),
 ) -> #(Promise(Result(Nil, e)), Runtime(i)) {
   let loop = event_loop.start()
   let #(stepper, io) = drift.start(state, io)

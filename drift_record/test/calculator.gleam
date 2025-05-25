@@ -21,15 +21,15 @@ pub fn handle_input(
   input: Input,
 ) -> drift.Step(Int, Input, Output, String) {
   case input {
-    Add(addend) -> drift.with_state(context, value + addend)
+    Add(addend) -> drift.continue(context, value + addend)
 
     Divide(divisor) ->
       case divisor {
         0 -> drift.stop_with_error(context, "Div by zero!")
-        divisor -> drift.with_state(context, value / divisor)
+        divisor -> drift.continue(context, value / divisor)
       }
 
-    Multiply(multiplier) -> drift.with_state(context, value * multiplier)
+    Multiply(multiplier) -> drift.continue(context, value * multiplier)
 
     // Fake delay for "calculating"
     Solve -> {
@@ -37,7 +37,7 @@ pub fn handle_input(
       let #(context, _timer) = drift.handle_after(context, 10, PublishResult)
       context
       |> drift.output(Calculating)
-      |> drift.with_state(value)
+      |> drift.continue(value)
     }
 
     PublishResult ->

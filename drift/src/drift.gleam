@@ -8,6 +8,7 @@
 //// this easier.
 //// Execution of the stepper should stop with the final effects applied.
 
+import drift/effect
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -33,45 +34,6 @@ type TimedInput(i) {
 
 type Timers(i) {
   Timers(id: Int, timers: List(TimedInput(i)))
-}
-
-/// Represents a context in which effects may be applied.
-/// May hold state (or Nil, if no state is needed).
-/// An effect context can only be constructed when starting a stepper,
-/// and transformed using `map_effect_context`.
-pub opaque type EffectContext(a) {
-  EffectContext(state: a)
-}
-
-/// Represents a side effect to be applied with a value.
-/// Can only be applied with an `EffectContext` outside of the pure context.
-pub opaque type Effect(a) {
-  Effect(effect: fn(a) -> Nil)
-}
-
-/// Constructs an effect from a function to be called with a value produced later.
-pub fn defer(effect: fn(a) -> Nil) -> Effect(a) {
-  Effect(effect)
-}
-
-/// Applies an effect (by running the deferred function) in the given context
-/// with the given input.
-pub fn apply(
-  ctx: EffectContext(a),
-  effect: Effect(b),
-  value: b,
-) -> EffectContext(a) {
-  effect.effect(value)
-  ctx
-}
-
-/// Applies a function to the state of an effect context, returning a new
-/// effect context.
-pub fn map_effect_context(
-  ctx: EffectContext(a),
-  fun: fn(a) -> b,
-) -> EffectContext(b) {
-  EffectContext(fun(ctx.state))
 }
 
 /// Represents the context in which a state is being manipulated within a step.
@@ -140,6 +102,16 @@ pub fn output_many(context: Context(i, o), outputs: List(o)) -> Context(i, o) {
   list.fold(outputs, context, output)
 }
 
+/// A shorthand for outputting effects to be performed.
+pub fn perform(
+  context: Context(i, o),
+  make_output: fn(effect.Action(a)) -> o,
+  effect: effect.Effect(a),
+  arg: a,
+) -> Context(i, o) {
+  output(context, make_output(effect.bind(effect, arg)))
+}
+
 /// An ongoing stepper update, which may update the state, timers,
 /// or produce outputs.
 /// Once a step is terminated (with or without error),
@@ -185,8 +157,8 @@ pub opaque type Stepper(state, input) {
 }
 
 /// Starts a new stepper with the given state for the pure and effectful parts.
-pub fn start(state: s, io_state: io) -> #(Stepper(s, i), EffectContext(io)) {
-  #(Stepper(state, Timers(0, [])), EffectContext(io_state))
+pub fn start(state: s, io_state: io) -> #(Stepper(s, i), effect.Context(io)) {
+  #(Stepper(state, Timers(0, [])), effect.new_context(io_state))
 }
 
 /// Represents the next state of a stepper,

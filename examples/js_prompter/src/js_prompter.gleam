@@ -1,4 +1,4 @@
-import drift.{type EffectContext}
+import drift/effect
 import drift/example/prompter.{type Input, StartPrompt}
 import drift/js/runtime
 import gleam/io
@@ -39,14 +39,14 @@ type IoState {
 }
 
 fn handle_output(
-  ctx: EffectContext(IoState),
+  ctx: effect.Context(IoState),
   output: prompter.Output,
   send: fn(Input) -> Nil,
-) -> Result(EffectContext(IoState), e) {
+) -> Result(effect.Context(IoState), e) {
   case output {
     prompter.Prompt(prompt) ->
       {
-        use state <- drift.map_effect_context(ctx)
+        use state <- effect.map_context(ctx)
 
         // Cancel previous read, if running (not super safe, just a demo)
         case state.cancel_read_stdin {
@@ -66,7 +66,7 @@ fn handle_output(
 
     prompter.CancelPrompt ->
       {
-        use state <- drift.map_effect_context(ctx)
+        use state <- effect.map_context(ctx)
         case state.cancel_read_stdin {
           Some(cancel) -> cancel()
           None -> Nil
@@ -80,8 +80,7 @@ fn handle_output(
       Ok(ctx)
     }
 
-    prompter.CompletePrompt(effect, value) ->
-      Ok(drift.apply(ctx, effect, value))
+    prompter.CompletePrompt(action) -> Ok(effect.perform(ctx, action))
   }
 }
 

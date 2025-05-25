@@ -1,7 +1,5 @@
-import drift.{
-  type Context, type Effect, type EffectContext, type Step, Continue, Stop,
-  StopWithError,
-}
+import drift.{type Context, type Step, Continue, Stop, StopWithError}
+import drift/effect.{type Effect}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
@@ -19,15 +17,15 @@ pub type IoResult(state, input) {
 pub type IoDriver(state, input, output) {
   IoDriver(
     init: fn() -> #(state, Selector(input)),
-    handle_output: fn(EffectContext(state), output) ->
-      IoResult(EffectContext(state), input),
+    handle_output: fn(effect.Context(state), output) ->
+      IoResult(effect.Context(state), input),
   )
 }
 
 pub fn using_io(
   init: fn() -> #(state, Selector(input)),
-  handle_output: fn(EffectContext(state), output) ->
-    IoResult(EffectContext(state), input),
+  handle_output: fn(effect.Context(state), output) ->
+    IoResult(effect.Context(state), input),
 ) -> IoDriver(state, input, output) {
   IoDriver(init, handle_output)
 }
@@ -81,7 +79,7 @@ pub fn call_forever(
   make_request: fn(Effect(reply)) -> message,
 ) -> reply {
   process.call_forever(subject, fn(reply_to) {
-    make_request(drift.defer(process.send(reply_to, _)))
+    make_request(effect.from(process.send(reply_to, _)))
   })
 }
 
@@ -91,7 +89,7 @@ pub fn call(
   sending make_request: fn(Effect(reply)) -> message,
 ) -> reply {
   process.call(subject, timeout, fn(reply_to) {
-    make_request(drift.defer(process.send(reply_to, _)))
+    make_request(effect.from(process.send(reply_to, _)))
   })
 }
 
@@ -106,7 +104,7 @@ type State(state, io, input, output, error) {
   State(
     stepper: drift.Stepper(state, input),
     timer: Option(process.Timer),
-    effect_ctx: EffectContext(io),
+    effect_ctx: effect.Context(io),
     io_driver: IoDriver(io, input, output),
     self: Subject(Msg(input)),
     base_selector: Selector(Msg(input)),

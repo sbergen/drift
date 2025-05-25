@@ -1,5 +1,5 @@
-import drift
 import drift/actor
+import drift/effect
 import drift/example/prompter.{StartPrompt, Stop, UserEntered}
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/io
@@ -48,7 +48,7 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
             })
 
           actor.InputSelectorChanged(
-            drift.map_effect_context(driver, fn(driver) {
+            effect.map_context(driver, fn(driver) {
               IoDriver(..driver, prompt_pid: Some(pid))
             }),
             process.new_selector()
@@ -63,7 +63,7 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
 
         prompter.CancelPrompt ->
           actor.IoOk(
-            drift.map_effect_context(driver, fn(driver) {
+            effect.map_context(driver, fn(driver) {
               case driver.prompt_pid {
                 Some(pid) -> process.kill(pid)
                 None -> Nil
@@ -72,8 +72,8 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
             }),
           )
 
-        prompter.CompletePrompt(effect, value) ->
-          actor.IoOk(drift.apply(driver, effect, value))
+        prompter.CompletePrompt(action) ->
+          actor.IoOk(effect.perform(driver, action))
       }
     })
     |> actor.start(1000, prompter.new_state(), prompter.handle_input)
