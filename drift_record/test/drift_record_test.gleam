@@ -94,7 +94,7 @@ fn format_echoer() -> format.Formatter(
           <> string.inspect(value)
           <> " "
           <> string.inspect(times)
-          <> " times, using "
+          <> " times\n  - Using "
           <> effect
         }
       }
@@ -104,7 +104,7 @@ fn format_echoer() -> format.Formatter(
         echoer.Reply(action) -> {
           let assert Ok(action) =
             effect.inspect_action(formatter, action, string.inspect)
-          #(formatter, "Reply: " <> action <> "")
+          #(formatter, "Reply:\n  - " <> action <> "")
         }
       }
   }

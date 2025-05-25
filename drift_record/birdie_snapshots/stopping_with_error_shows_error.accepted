@@ -7,4 +7,5 @@ test_name: stop_with_error_test
   --> Add(5)
   --> Divide(0)
   !!  "Div by zero!"
- =!!= Already stopped, ignoring: Divide(1)
+ =!!= Already stopped, ignoring:
+      Divide(1)

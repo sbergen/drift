@@ -96,11 +96,14 @@ fn step_or_tick(
 ) -> Recorder(s, i, o, e, f) {
   use <- bool.lazy_guard(recorder.stopped, fn() {
     let log =
-      recorder.log <> " =!!= Already stopped, ignoring: " <> description <> "\n"
+      recorder.log
+      <> " =!!= Already stopped, ignoring:\n      "
+      <> pad_lines(description)
+      <> "\n"
     Recorder(..recorder, log:)
   })
 
-  let log = recorder.log <> "  --> " <> description <> "\n"
+  let log = recorder.log <> "  --> " <> pad_lines(description) <> "\n"
 
   let next = case input {
     Some(input) ->
@@ -132,10 +135,15 @@ fn output_list(log: String, first: Bool, values: List(String)) -> String {
   case first, values {
     _, [] -> log
     True, [head, ..rest] ->
-      { log <> "<--   " <> head <> "\n" }
+      { log <> "<--   " <> pad_lines(head) <> "\n" }
       |> output_list(False, rest)
     False, [head, ..rest] ->
-      { log <> "      " <> head <> "\n" }
+      { log <> "      " <> pad_lines(head) <> "\n" }
       |> output_list(False, rest)
   }
+}
+
+fn pad_lines(output: String) -> String {
+  string.split(output, "\n")
+  |> string.join("\n      ")
 }
