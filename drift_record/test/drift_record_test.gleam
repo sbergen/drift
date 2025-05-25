@@ -89,7 +89,7 @@ fn format_echoer() -> format.Formatter(
     record.Input(input) ->
       case input {
         echoer.Echo(effect, value, times) -> {
-          use effect <- format.map(formatter, effect.inspect, effect)
+          use effect <- format.map(effect.inspect(formatter, effect))
           "Echo "
           <> string.inspect(value)
           <> " "

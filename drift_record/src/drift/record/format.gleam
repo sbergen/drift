@@ -1,4 +1,4 @@
-//// Stateful formatting
+//// Stateful formatting utilities for recorded inputs/outputs
 
 import gleam/list
 
@@ -34,12 +34,19 @@ pub fn list(
   list.map_fold(values, formatter, value)
 }
 
-pub fn map(
-  state: s,
-  format: fn(s, a) -> #(s, String),
-  value: a,
-  mapper: fn(String) -> String,
-) -> #(s, String) {
-  let #(state, str) = format(state, value)
+/// Utility function for nicer syntax when running a single formatting function.
+/// Works nice together with `use`:
+/// ```gleam
+/// use effect <- format.map(effect.inspect(formatter, effect))
+/// "My effect: " <> effect
+/// ```
+/// is equivalent to
+/// ```gleam
+/// let #(formatter, effect) = effect.inspect(formatter, effect)
+/// #(formatter, "My effect: " <> effect)
+/// 
+/// ```
+pub fn map(result: #(s, String), mapper: fn(String) -> String) -> #(s, String) {
+  let #(state, str) = result
   #(state, mapper(str))
 }
