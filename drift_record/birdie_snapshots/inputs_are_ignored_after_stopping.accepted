@@ -10,4 +10,4 @@ test_name: input_after_stop_test
   --> Tick
 <--   [Result(0)]
 ===== Stopped!
-  !!  Already stopped, ignoring: Solve
+ =!!= Already stopped, ignoring: Solve

@@ -1,0 +1,10 @@
+---
+version: 1.3.0
+title: Effect and action formatting
+file: ./test/drift_record_test.gleam
+test_name: effects_and_actions_test
+---
+  --> Echo(Effect#0, "Hello!")
+<--   [Reply(Effect#0("Hello!"))]
+  --> Echo(Effect#1, "Hello again!")
+<--   [Reply(Effect#1("Hello again!"))]
