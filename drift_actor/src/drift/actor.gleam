@@ -1,16 +1,16 @@
 import drift.{type Context, type Step, Continue, Stop, StopWithError}
 import drift/effect.{type Effect}
-import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import gleam/result
+import gleam/string
 
 pub type IoResult(state, input) {
   IoOk(state)
-  FatalIoError(Dynamic)
+  FatalIoError(String)
   InputSelectorChanged(state, Selector(input))
 }
 
@@ -160,14 +160,14 @@ fn handle_message(
               |> process.map_selector(HandleInput)
               |> process.merge_selector(state.base_selector),
           )
-        FatalIoError(reason) -> actor.Stop(process.Abnormal(reason))
+        FatalIoError(reason) -> actor.stop_abnormal(reason)
       }
     }
 
     Stop(_effects) -> actor.stop()
 
     StopWithError(_effects, reason) ->
-      actor.Stop(process.Abnormal(dynamic.from(reason)))
+      actor.stop_abnormal(string.inspect(reason))
   }
 }
 

@@ -13,8 +13,8 @@ version = "1.0.0"
 # https://gleam.run/writing-gleam/gleam-toml/.
 
 [dependencies]
-gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-gleam_otp = { git = "https://github.com/gleam-lang/otp.git", ref = "504025fcc2a53ab55ed116cdaf8513e56c92447b" }
+gleam_stdlib = ">= 0.60.0 and < 2.0.0"
+gleam_otp = ">= 1.0.0-rc1 and < 2.0.0"
 gleam_erlang = ">= 1.0.0-rc1 and < 2.0.0"
 drift = { path = "../drift" }
 
