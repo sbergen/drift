@@ -45,7 +45,7 @@ pub fn now(context: Context(_, _)) -> Timestamp {
 }
 
 /// Returns a new context with a timer added to handle an input after a delay.
-pub fn handle_after(
+pub fn start_timer(
   context: Context(i, o),
   delay: Int,
   input: i,

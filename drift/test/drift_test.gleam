@@ -34,7 +34,7 @@ pub fn example_use_test() {
     state
     |> drift.begin_step(0)
     |> drift.chain(fn(context, state) {
-      let #(context, _) = drift.handle_after(context, 10, PrintTime)
+      let #(context, _) = drift.start_timer(context, 10, PrintTime)
       context |> drift.continue(state)
     })
     |> drift.end_step()
@@ -84,7 +84,7 @@ fn apply_input(context: Context, lines: List(String), input: Input) -> Step {
     PrintTime -> {
       let now = drift.now(context)
       let new_line = "It's now: " <> string.inspect(now)
-      let #(context, _) = drift.handle_after(context, 10, PrintTime)
+      let #(context, _) = drift.start_timer(context, 10, PrintTime)
       context |> drift.continue(list.prepend(lines, new_line))
     }
 

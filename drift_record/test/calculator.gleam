@@ -34,7 +34,7 @@ pub fn handle_input(
     // Fake delay for "calculating"
     Solve -> {
       // This can't be canceled
-      let #(context, _timer) = drift.handle_after(context, 10, PublishResult)
+      let #(context, _timer) = drift.start_timer(context, 10, PublishResult)
       context
       |> drift.output(Calculating)
       |> drift.continue(value)

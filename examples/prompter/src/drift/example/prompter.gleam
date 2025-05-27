@@ -77,7 +77,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
           None -> context
         }
         |> drift.output(Prompt(prompt))
-        |> drift.handle_after(2000, Handle(TimeOut))
+        |> drift.start_timer(2000, Handle(TimeOut))
 
       context |> drift.continue(State(..state, active_prompt: Some(result)))
     }
