@@ -9,7 +9,7 @@
 //// Execution of the stepper should stop with the final effects applied.
 
 import drift/effect
-import gleam/int
+import drift/internal/timer
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
@@ -18,9 +18,8 @@ pub type Timestamp =
   Int
 
 /// A handle to a timer. Can be used to cancel the timer.
-pub opaque type Timer {
-  Timer(id: Int)
-}
+pub type Timer =
+  timer.Timer
 
 /// The result of canceling a timer
 pub type Cancelled {
@@ -28,18 +27,14 @@ pub type Cancelled {
   Cancelled(time_remaining: Int)
 }
 
-type TimedInput(i) {
-  TimedInput(id: Int, due_time: Timestamp, input: i)
-}
-
-type Timers(i) {
-  Timers(id: Int, timers: List(TimedInput(i)))
-}
-
 /// Represents the context in which a state is being manipulated within a step.
 /// Can be used to add side effects while executing a step.
 pub opaque type Context(input, output) {
-  Context(start_time: Timestamp, timers: Timers(input), outputs: List(output))
+  Context(
+    start_time: Timestamp,
+    timers: timer.Timers(input),
+    outputs: List(output),
+  )
 }
 
 /// Gets the current timestamp from the context.
@@ -55,13 +50,9 @@ pub fn handle_after(
   delay: Int,
   input: i,
 ) -> #(Context(i, o), Timer) {
-  let timers = context.timers
-  let id = timers.id
-  let timer = TimedInput(id, context.start_time + delay, input)
-  #(
-    Context(..context, timers: Timers(id + 1, [timer, ..timers.timers])),
-    Timer(id),
-  )
+  let #(timers, timer) =
+    timer.add(context.timers, context.start_time + delay, input)
+  #(Context(..context, timers:), timer)
 }
 
 /// Returns a new context with the given timer canceled.
@@ -69,27 +60,18 @@ pub fn cancel_timer(
   context: Context(i, o),
   to_cancel: Timer,
 ) -> #(Context(i, o), Cancelled) {
-  let #(cancelled, new_timers) = {
-    use #(canceled, timers), timer <- list.fold(
-      context.timers.timers,
-      #(TimerNotFound, []),
-    )
-    case timer.id == to_cancel.id {
-      True -> #(Cancelled(timer.due_time - context.start_time), timers)
-      False -> #(canceled, [timer, ..timers])
-    }
-  }
+  let #(timers, cancelled) =
+    timer.cancel(context.timers, context.start_time, to_cancel)
 
-  #(
-    Context(..context, timers: Timers(context.timers.id, new_timers)),
-    cancelled,
-  )
+  #(Context(..context, timers:), case cancelled {
+    None -> TimerNotFound
+    Some(time_remaining) -> Cancelled(time_remaining)
+  })
 }
 
 /// Returns a new context with all timers canceled.
 pub fn cancel_all_timers(context: Context(i, o)) -> Context(i, o) {
-  // Do not reset the id in case timer ids are still held onto!
-  Context(..context, timers: Timers(context.timers.id, []))
+  Context(..context, timers: timer.cancel_all(context.timers))
 }
 
 /// Returns a new context with the given output added.
@@ -153,12 +135,12 @@ pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
 
 /// Holds the current state and active timers.
 pub opaque type Stepper(state, input) {
-  Stepper(state: state, timers: Timers(input))
+  Stepper(state: state, timers: timer.Timers(input))
 }
 
 /// Starts a new stepper with the given state for the pure and effectful parts.
 pub fn start(state: s, io_state: io) -> #(Stepper(s, i), effect.Context(io)) {
-  #(Stepper(state, Timers(0, [])), effect.new_context(io_state))
+  #(Stepper(state, timer.new()), effect.new_context(io_state))
 }
 
 /// Represents the next state of a stepper,
@@ -187,19 +169,18 @@ pub fn tick(
   apply: fn(Context(i, o), s, i) -> Step(s, i, o, e),
 ) -> Next(s, i, o, e) {
   let Stepper(state, timers) = stepper
+  let #(timers, to_trigger) = timer.expired(timers, now)
 
-  let #(to_trigger, remaining_timers) =
-    list.partition(timers.timers, fn(timer) { timer.due_time <= now })
-  let timers = Timers(timers.id, remaining_timers)
-
-  to_trigger
-  |> list.sort(fn(a, b) { int.compare(a.due_time, b.due_time) })
-  |> list.fold(ContinueStep(Context(now, timers, []), state), fn(next, timer) {
-    case next {
-      ContinueStep(context, state) -> apply(context, state, timer.input)
-      other -> other
-    }
-  })
+  list.fold(
+    to_trigger,
+    ContinueStep(Context(now, timers, []), state),
+    fn(next, input) {
+      case next {
+        ContinueStep(context, state) -> apply(context, state, input)
+        other -> other
+      }
+    },
+  )
   |> end_step()
 }
 
@@ -227,24 +208,15 @@ pub fn begin_step(state: Stepper(s, i), now: Timestamp) -> Step(s, i, _, _) {
 pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
   case step {
     ContinueStep(Context(_, timers, effects), state) ->
-      Continue(list.reverse(effects), Stepper(state, timers), next_tick(timers))
+      Continue(
+        list.reverse(effects),
+        Stepper(state, timers),
+        timer.next_tick(timers),
+      )
 
     StopStep(effects, Some(error)) ->
       StopWithError(list.reverse(effects), error)
 
     StopStep(effects, None) -> Stop(list.reverse(effects))
-  }
-}
-
-/// Gets the next timer due time or `None` if there are no active timers.
-fn next_tick(timers: Timers(_)) -> Option(Timestamp) {
-  case timers.timers {
-    [] -> None
-    [timer, ..rest] ->
-      Some(
-        list.fold(rest, timer.due_time, fn(min, timer) {
-          int.min(min, timer.due_time)
-        }),
-      )
   }
 }
