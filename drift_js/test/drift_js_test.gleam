@@ -40,14 +40,14 @@ fn noop(ctx: Context(i, o), state: s, _: i) -> Step(s, i, o, e) {
   ctx |> drift.continue(state)
 }
 
-fn stop(ctx: Context(i, o), _tate: s, _: i) -> Step(s, i, o, e) {
-  ctx |> drift.stop()
+fn stop(ctx: Context(i, o), state: s, _: i) -> Step(s, i, o, e) {
+  ctx |> drift.stop(state)
 }
 
 pub fn start_without_io(
   state: s,
   next: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-) -> #(Promise(Result(Nil, e)), Runtime(i)) {
+) -> #(Promise(Result(s, e)), Runtime(i)) {
   runtime.start(state, Nil, next, fn(ctx, _, _) { Ok(ctx) })
 }
 

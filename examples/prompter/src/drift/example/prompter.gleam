@@ -91,7 +91,7 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
         |> string.join("\n"),
       ))
       |> drift.output(CancelPrompt)
-      |> drift.stop()
+      |> drift.stop(state)
 
     Handle(TimeOut) ->
       case state.active_prompt {
@@ -102,6 +102,6 @@ pub fn handle_input(context: Context, state: State, input: Input) -> Step {
       }
       |> drift.output(Print("Too slow!"))
       |> drift.output(CancelPrompt)
-      |> drift.stop()
+      |> drift.stop(state)
   }
 }

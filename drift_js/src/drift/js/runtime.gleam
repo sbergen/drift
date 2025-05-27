@@ -33,7 +33,7 @@ pub fn start(
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   handle_output: fn(effect.Context(io, Nil), o, fn(i) -> Nil) ->
     Result(effect.Context(io, Nil), e),
-) -> #(Promise(Result(Nil, e)), Runtime(i)) {
+) -> #(Promise(Result(s, e)), Runtime(i)) {
   let loop = event_loop.start()
   let #(stepper, io) = drift.new(state, io, Nil)
   let send = event_loop.send(loop, _)
@@ -48,7 +48,7 @@ fn do_loop(
   io: io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   handle_output: fn(io, o) -> Result(io, e),
-) -> Promise(Result(Nil, e)) {
+) -> Promise(Result(s, e)) {
   // TODO: Decide what to do with errors that shouldn't happen
   let assert Ok(next) = event_loop.receive(loop)
   use message <- await(next)
@@ -85,7 +85,7 @@ fn do_loop(
         Error(error) -> stop(loop, Error(error))
       }
     }
-    drift.Stop(_effects) -> stop(loop, Ok(Nil))
+    drift.Stop(_effects, state) -> stop(loop, Ok(state))
     drift.StopWithError(_effects, error) -> stop(loop, Error(error))
   }
 }

@@ -100,7 +100,8 @@ pub fn perform(
 /// it can no longer be continued.
 pub opaque type Step(state, input, output, error) {
   ContinueStep(context: Context(input, output), state: state)
-  StopStep(outputs: List(output), error: Option(error))
+  StopStep(outputs: List(output), state: state)
+  StopStepWithError(outputs: List(output), error: error)
 }
 
 /// If a step hasn't terminated, extracts the context and state from the step,
@@ -121,16 +122,16 @@ pub fn continue(context: Context(i, o), state: s) -> Step(s, i, o, e) {
   ContinueStep(context, state)
 }
 
-/// Terminates the stepper without error.
+/// Terminates the stepper with the final state without error.
 /// All effects in the context will still be applied.
-pub fn stop(context: Context(i, o)) -> Step(_, i, o, _) {
-  StopStep(context.outputs, None)
+pub fn stop(context: Context(i, o), state: s) -> Step(s, i, o, _) {
+  StopStep(context.outputs, state)
 }
 
 /// Terminates the stepper with an error.
 /// All effects in the context will still be applied.
 pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
-  StopStep(context.outputs, Some(error))
+  StopStepWithError(context.outputs, error)
 }
 
 /// Holds the current state and active timers.
@@ -159,7 +160,9 @@ pub type Next(state, input, output, error) {
     due_time: Option(Timestamp),
   )
 
-  Stop(outputs: List(output))
+  /// Execution of the stepper should stop with the final effects applied.
+  /// The terminal state is also included.
+  Stop(outputs: List(output), state: state)
 
   /// Execution of the stepper should stop with the final effects applied.
   /// The given error should be applied in the executing context
@@ -218,9 +221,9 @@ pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
         timer.next_tick(timers),
       )
 
-    StopStep(effects, Some(error)) ->
+    StopStepWithError(effects, error) ->
       StopWithError(list.reverse(effects), error)
 
-    StopStep(effects, None) -> Stop(list.reverse(effects))
+    StopStep(effects, state) -> Stop(list.reverse(effects), state)
   }
 }

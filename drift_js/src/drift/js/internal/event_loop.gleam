@@ -37,7 +37,7 @@ pub fn error_if_stopped(
 
 /// Sends a message, which will a complete a promise returned from `receive`,
 /// regardless of whether `receive` is called before or after `send`.
-/// Will queue the value if call more times than `receive`.
+/// Will queue the value if called more times than `receive`.
 /// Clears any previously set timeout.
 /// Will not return an error if the event loop has been stopped,
 /// use `error_if_stopped` instead.

@@ -167,7 +167,7 @@ fn handle_message(
       }
     }
 
-    Stop(_effects) -> actor.stop()
+    Stop(_effects, _state) -> actor.stop()
 
     StopWithError(_effects, reason) ->
       actor.stop_abnormal(string.inspect(reason))

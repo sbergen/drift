@@ -58,7 +58,7 @@ pub fn example_use_test() {
   let assert Continue([Print(log)], state, Some(30)) =
     drift.step(state, 25, PrintMe, apply_input)
 
-  let assert drift.Stop([]) = drift.step(state, 25, Stop, apply_input)
+  let assert drift.Stop([], _) = drift.step(state, 25, Stop, apply_input)
 
   birdie.snap(log, "Demonstrate some basic usage")
 }
@@ -89,6 +89,6 @@ fn apply_input(context: Context, lines: List(String), input: Input) -> Step {
     }
 
     Yank -> context |> drift.continue(list.drop(lines, 1))
-    Stop -> context |> drift.stop()
+    Stop -> context |> drift.stop(lines)
   }
 }

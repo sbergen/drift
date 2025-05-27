@@ -43,6 +43,6 @@ pub fn handle_input(
     PublishResult ->
       context
       |> drift.output(Result(value))
-      |> drift.stop()
+      |> drift.stop(value)
   }
 }

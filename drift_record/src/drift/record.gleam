@@ -118,7 +118,8 @@ fn step_or_tick(
     drift.Continue(_outputs, stepper, next_tick) ->
       Recorder(..recorder, stepper:, log:, next_tick:)
 
-    drift.Stop(_outputs) -> {
+    // TODO: Add optional printing of terminal state
+    drift.Stop(_outputs, _state) -> {
       let log = log <> "===== Stopped!\n"
       Recorder(..recorder, log:, next_tick: None, stopped: True)
     }

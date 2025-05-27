@@ -26,7 +26,7 @@ pub fn main() {
   runtime.send(r, prompter.Stop)
 
   use result <- promise.await(result)
-  let assert Ok(Nil) = result
+  let assert Ok(_) = result
 
   // Pause stdin and stdout, to see if we've canceled everything properly.
   // If all streams and timers are canceled, the process should exit.
