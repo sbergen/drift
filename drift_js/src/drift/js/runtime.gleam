@@ -31,11 +31,11 @@ pub fn start(
   state: s,
   io: io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-  handle_output: fn(effect.Context(io), o, fn(i) -> Nil) ->
-    Result(effect.Context(io), e),
+  handle_output: fn(effect.Context(io, Nil), o, fn(i) -> Nil) ->
+    Result(effect.Context(io, Nil), e),
 ) -> #(Promise(Result(Nil, e)), Runtime(i)) {
   let loop = event_loop.start()
-  let #(stepper, io) = drift.start(state, io)
+  let #(stepper, io) = drift.new(state, io, Nil)
   let send = event_loop.send(loop, _)
   let handle_output = fn(io, output) { handle_output(io, output, send) }
   let result = do_loop(loop, stepper, io, handle_input, handle_output)

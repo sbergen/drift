@@ -39,10 +39,10 @@ type IoState {
 }
 
 fn handle_output(
-  ctx: effect.Context(IoState),
+  ctx: effect.Context(IoState, Nil),
   output: prompter.Output,
   send: fn(Input) -> Nil,
-) -> Result(effect.Context(IoState), e) {
+) -> Result(effect.Context(IoState, Nil), e) {
   case output {
     prompter.Prompt(prompt) ->
       {

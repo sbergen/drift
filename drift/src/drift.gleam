@@ -138,9 +138,13 @@ pub opaque type Stepper(state, input) {
   Stepper(state: state, timers: timer.Timers(input))
 }
 
-/// Starts a new stepper with the given state for the pure and effectful parts.
-pub fn start(state: s, io_state: io) -> #(Stepper(s, i), effect.Context(io)) {
-  #(Stepper(state, timer.new()), effect.new_context(io_state))
+/// Creates a new stepper with the given state for the pure and effectful parts.
+pub fn new(
+  state: s,
+  io_state: io,
+  inputs: is,
+) -> #(Stepper(s, i), effect.Context(io, is)) {
+  #(Stepper(state, timer.new()), effect.new_context(io_state, inputs))
 }
 
 /// Represents the next state of a stepper,

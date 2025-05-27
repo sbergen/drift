@@ -47,22 +47,25 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
               process.send(reply_to, result)
             })
 
-          actor.InputSelectorChanged(
-            effect.map_context(driver, fn(driver) {
+          Ok(
+            driver
+            |> effect.map_context(fn(driver) {
               IoDriver(..driver, prompt_pid: Some(pid))
-            }),
-            process.new_selector()
+            })
+            |> effect.with_inputs(
+              process.new_selector()
               |> process.select_map(reply_to, UserEntered),
+            ),
           )
         }
 
         prompter.Print(text) -> {
           io.println(text)
-          actor.IoOk(driver)
+          Ok(driver)
         }
 
         prompter.CancelPrompt ->
-          actor.IoOk(
+          Ok(
             effect.map_context(driver, fn(driver) {
               case driver.prompt_pid {
                 Some(pid) -> process.kill(pid)
@@ -72,8 +75,7 @@ fn new_prompter_actor() -> process.Subject(prompter.Input) {
             }),
           )
 
-        prompter.CompletePrompt(action) ->
-          actor.IoOk(effect.perform(driver, action))
+        prompter.CompletePrompt(action) -> Ok(effect.perform(driver, action))
       }
     })
     |> actor.start(1000, prompter.new_state(), prompter.handle_input)

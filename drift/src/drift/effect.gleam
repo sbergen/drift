@@ -4,8 +4,37 @@
 /// May hold state (or Nil, if no state is needed).
 /// An effect context can only be constructed when starting a stepper,
 /// and transformed using `map_effect_context`.
-pub opaque type Context(a) {
-  Context(state: a)
+pub opaque type Context(s, i) {
+  Context(state: s, inputs: i)
+}
+
+/// Constructs a new effect context.
+/// This should only be done when starting a stepper,
+/// which is why it is internal!
+@internal
+pub fn new_context(state: a, inputs: i) -> Context(a, i) {
+  Context(state, inputs)
+}
+
+/// Applies a function to the state of an effect context, returning a new
+/// effect context.
+pub fn map_context(ctx: Context(a, i), fun: fn(a) -> a) -> Context(a, i) {
+  Context(fun(ctx.state), ctx.inputs)
+}
+
+/// Returns the inputs of an effect context.
+pub fn inputs(ctx: Context(_, i)) -> i {
+  ctx.inputs
+}
+
+/// Returns true if the inputs of two effect contexts are different.
+pub fn inputs_changed(x: Context(a, b), y: Context(a, b)) {
+  x.inputs != y.inputs
+}
+
+/// Replaces the inputs of an effect context.
+pub fn with_inputs(ctx: Context(a, i), new_inputs: i) -> Context(a, i) {
+  Context(..ctx, inputs: new_inputs)
 }
 
 /// Represents a side effect to be applied with a yet unknown value.
@@ -38,23 +67,9 @@ pub fn bind(effect: Effect(a), arg: a) -> Action(a) {
 }
 
 /// Performs a side effect that was prepared.
-pub fn perform(ctx: Context(a), action: Action(_)) -> Context(a) {
+pub fn perform(ctx: Context(s, i), action: Action(_)) -> Context(s, i) {
   action.effect.function(action.argument)
   ctx
-}
-
-/// Applies a function to the state of an effect context, returning a new
-/// effect context.
-pub fn map_context(ctx: Context(a), fun: fn(a) -> b) -> Context(b) {
-  Context(fun(ctx.state))
-}
-
-/// Constructs a new effect context.
-/// This should only be done when starting a stepper,
-/// which is why it is internal!
-@internal
-pub fn new_context(state: a) -> Context(a) {
-  Context(state)
 }
 
 /// Resets the effect id counter, to get deterministic ids.

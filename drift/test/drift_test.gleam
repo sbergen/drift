@@ -28,7 +28,7 @@ type Context =
   drift.Context(Input, Output)
 
 pub fn example_use_test() {
-  let #(state, _) = drift.start(["Hello, World!"], Nil)
+  let #(state, _) = drift.new(["Hello, World!"], Nil, Nil)
 
   let assert Continue([], state, Some(10)) =
     state

@@ -1,5 +1,6 @@
 import drift.{type Context, type Step, Continue, Stop, StopWithError}
 import drift/effect.{type Effect}
+import gleam/bool
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
 import gleam/list
@@ -8,24 +9,18 @@ import gleam/otp/actor
 import gleam/result
 import gleam/string
 
-pub type IoResult(state, input) {
-  IoOk(state)
-  FatalIoError(String)
-  InputSelectorChanged(state, Selector(input))
-}
-
 pub type IoDriver(state, input, output) {
   IoDriver(
     init: fn() -> #(state, Selector(input)),
-    handle_output: fn(effect.Context(state), output) ->
-      IoResult(effect.Context(state), input),
+    handle_output: fn(effect.Context(state, Selector(input)), output) ->
+      Result(effect.Context(state, Selector(input)), String),
   )
 }
 
 pub fn using_io(
   init: fn() -> #(state, Selector(input)),
-  handle_output: fn(effect.Context(state), output) ->
-    IoResult(effect.Context(state), input),
+  handle_output: fn(effect.Context(state, Selector(input)), output) ->
+    Result(effect.Context(state, Selector(input)), String),
 ) -> IoDriver(state, input, output) {
   IoDriver(init, handle_output)
 }
@@ -39,7 +34,7 @@ pub fn start(
   actor.new_with_initialiser(timeout, fn(self) {
     let #(io_state, input_selector) = io_driver.init()
 
-    let #(stepper, effect_ctx) = drift.start(state, io_state)
+    let #(stepper, effect_ctx) = drift.new(state, io_state, input_selector)
 
     let inputs = process.new_subject()
     let base_selector =
@@ -104,7 +99,7 @@ type State(state, io, input, output, error) {
   State(
     stepper: drift.Stepper(state, input),
     timer: Option(process.Timer),
-    effect_ctx: effect.Context(io),
+    effect_ctx: effect.Context(io, Selector(input)),
     io_driver: IoDriver(io, input, output),
     self: Subject(Msg(input)),
     base_selector: Selector(Msg(input)),
@@ -135,8 +130,8 @@ fn handle_message(
 
   // Apply effects, no matter if stopped or not
   let io_result =
-    list.fold(next.outputs, IoOk(state.effect_ctx), fn(io_state, output) {
-      use io_state <- bind_io(io_state)
+    list.fold(next.outputs, Ok(state.effect_ctx), fn(io_state, output) {
+      use io_state <- result.try(io_state)
       state.io_driver.handle_output(io_state, output)
     })
 
@@ -152,15 +147,23 @@ fn handle_message(
       let state = State(..state, stepper:, timer:)
 
       case io_result {
-        IoOk(effect_ctx) -> actor.continue(State(..state, effect_ctx:))
-        InputSelectorChanged(effect_ctx, selector) ->
+        Ok(effect_ctx) -> {
+          let next = actor.continue(State(..state, effect_ctx:))
+          use <- bool.guard(
+            !effect.inputs_changed(effect_ctx, state.effect_ctx),
+            next,
+          )
+
           actor.with_selector(
-            actor.continue(State(..state, effect_ctx:)),
-            selector
+            next,
+            effect_ctx
+              |> effect.inputs
               |> process.map_selector(HandleInput)
               |> process.merge_selector(state.base_selector),
           )
-        FatalIoError(reason) -> actor.stop_abnormal(reason)
+        }
+
+        Error(reason) -> actor.stop_abnormal(reason)
       }
     }
 
@@ -168,23 +171,6 @@ fn handle_message(
 
     StopWithError(_effects, reason) ->
       actor.stop_abnormal(string.inspect(reason))
-  }
-}
-
-// Applies a mapping if not errored, carries over the latest selector
-fn bind_io(
-  result: IoResult(a, i),
-  fun: fn(a) -> IoResult(b, i),
-) -> IoResult(b, i) {
-  case result {
-    IoOk(a) -> fun(a)
-    FatalIoError(e) -> FatalIoError(e)
-    InputSelectorChanged(a, selector) ->
-      case fun(a) {
-        IoOk(b) -> InputSelectorChanged(b, selector)
-        FatalIoError(e) -> FatalIoError(e)
-        InputSelectorChanged(b, s) -> InputSelectorChanged(b, s)
-      }
   }
 }
 

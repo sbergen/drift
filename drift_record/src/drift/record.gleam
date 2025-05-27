@@ -29,7 +29,7 @@ pub fn new(
   formatter: fn(Message(i, o)) -> String,
 ) -> Recorder(s, i, o, e) {
   effect.reset_id()
-  let #(stepper, _effect_ctx) = drift.start(state, Nil)
+  let #(stepper, _effect_ctx) = drift.new(state, Nil, Nil)
   Recorder(stepper, apply_input, formatter, None, 0, "", False)
 }
 

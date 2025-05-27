@@ -10,7 +10,7 @@ pub fn new() -> Subject(Input) {
   let assert Ok(actor) =
     actor.using_io(fn() { #(Nil, process.new_selector()) }, fn(ctx, output) {
       let ApplyEcho(action) = output
-      actor.IoOk(effect.perform(ctx, action))
+      Ok(effect.perform(ctx, action))
     })
     |> actor.start(100, State(0, dict.new()), handle_input)
 
