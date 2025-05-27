@@ -29,17 +29,18 @@ pub fn call_forever(
 
 pub fn start(
   state: s,
-  io: io,
+  create_io: fn(Runtime(i)) -> io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   handle_output: fn(effect.Context(io, Nil), o, fn(i) -> Nil) ->
     Result(effect.Context(io, Nil), e),
 ) -> #(Promise(Result(s, e)), Runtime(i)) {
   let loop = event_loop.start()
-  let #(stepper, io) = drift.new(state, io, Nil)
+  let runtime = Runtime(loop)
+  let #(stepper, io) = drift.new(state, create_io(runtime), Nil)
   let send = event_loop.send(loop, _)
   let handle_output = fn(io, output) { handle_output(io, output, send) }
   let result = do_loop(loop, stepper, io, handle_input, handle_output)
-  #(result, Runtime(loop))
+  #(result, runtime)
 }
 
 fn do_loop(

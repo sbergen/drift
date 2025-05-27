@@ -10,7 +10,7 @@ pub fn main() {
   let #(result, r) =
     runtime.start(
       prompter.new_state(),
-      IoState(None),
+      fn(_) { IoState(None) },
       prompter.handle_input,
       handle_output,
     )

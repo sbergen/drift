@@ -48,7 +48,7 @@ pub fn start_without_io(
   state: s,
   next: fn(Context(i, o), s, i) -> Step(s, i, o, e),
 ) -> #(Promise(Result(s, e)), Runtime(i)) {
-  runtime.start(state, Nil, next, fn(ctx, _, _) { Ok(ctx) })
+  runtime.start(state, fn(_) { Nil }, next, fn(ctx, _, _) { Ok(ctx) })
 }
 
 fn timeout(after: Int, body: fn() -> Promise(a)) -> Promise(a) {
