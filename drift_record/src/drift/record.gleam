@@ -10,6 +10,7 @@ pub opaque type Recorder(s, i, o, e) {
     stepper: drift.Stepper(s, i),
     apply_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
     formatter: fn(Message(i, o)) -> String,
+    stop_formatter: Option(fn(s) -> String),
     next_tick: Option(Timestamp),
     time: Timestamp,
     log: String,
@@ -27,10 +28,11 @@ pub fn new(
   state: s,
   apply_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   formatter: fn(Message(i, o)) -> String,
+  stop_formatter: Option(fn(s) -> String),
 ) -> Recorder(s, i, o, e) {
   effect.reset_id()
   let #(stepper, _effect_ctx) = drift.new(state, Nil, Nil)
-  Recorder(stepper, apply_input, formatter, None, 0, "", False)
+  Recorder(stepper, apply_input, formatter, stop_formatter, None, 0, "", False)
 }
 
 pub fn input(recorder: Recorder(s, i, o, e), input: i) -> Recorder(s, i, o, e) {
@@ -118,9 +120,14 @@ fn step_or_tick(
     drift.Continue(_outputs, stepper, next_tick) ->
       Recorder(..recorder, stepper:, log:, next_tick:)
 
-    // TODO: Add optional printing of terminal state
-    drift.Stop(_outputs, _state) -> {
-      let log = log <> "===== Stopped!\n"
+    drift.Stop(_outputs, state) -> {
+      let log =
+        log
+        <> "===== Stopped!\n"
+        <> case recorder.stop_formatter {
+          Some(format) -> format(state) <> "\n"
+          None -> ""
+        }
       Recorder(..recorder, log:, next_tick: None, stopped: True)
     }
 

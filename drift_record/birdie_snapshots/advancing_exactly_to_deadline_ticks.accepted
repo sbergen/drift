@@ -1,8 +1,6 @@
 ---
 version: 1.3.0
 title: Advancing exactly to deadline ticks
-file: ./test/drift_record_test.gleam
-test_name: exact_tick_test
 ---
   --> Add(42)
   --> Divide(4)
@@ -12,3 +10,4 @@ test_name: exact_tick_test
   --> Tick
 <--   Result(10)
 ===== Stopped!
+10

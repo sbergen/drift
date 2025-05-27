@@ -3,6 +3,7 @@ import calculator
 import drift/effect
 import drift/record.{discard}
 import echoer
+import gleam/option.{Some}
 import gleam/string
 import gleeunit
 
@@ -11,7 +12,12 @@ pub fn main() -> Nil {
 }
 
 pub fn small_time_advance_test() {
-  record.new(0, calculator.handle_input, format_calculator)
+  record.new(
+    0,
+    calculator.handle_input,
+    format_calculator,
+    Some(string.inspect),
+  )
   |> record.input(calculator.Add(8))
   |> record.input(calculator.Divide(2))
   |> record.input(calculator.Solve)
@@ -22,7 +28,12 @@ pub fn small_time_advance_test() {
 }
 
 pub fn late_tick_test() {
-  record.new(0, calculator.handle_input, format_calculator)
+  record.new(
+    0,
+    calculator.handle_input,
+    format_calculator,
+    Some(string.inspect),
+  )
   |> record.input(calculator.Add(42))
   |> record.input(calculator.Divide(4))
   |> record.input(calculator.Solve)
@@ -32,7 +43,12 @@ pub fn late_tick_test() {
 }
 
 pub fn exact_tick_test() {
-  record.new(0, calculator.handle_input, format_calculator)
+  record.new(
+    0,
+    calculator.handle_input,
+    format_calculator,
+    Some(string.inspect),
+  )
   |> record.input(calculator.Add(42))
   |> record.input(calculator.Divide(4))
   |> record.input(calculator.Solve)
@@ -42,7 +58,12 @@ pub fn exact_tick_test() {
 }
 
 pub fn stop_with_error_test() {
-  record.new(0, calculator.handle_input, format_calculator)
+  record.new(
+    0,
+    calculator.handle_input,
+    format_calculator,
+    Some(string.inspect),
+  )
   |> record.input(calculator.Add(5))
   |> record.input(calculator.Divide(0))
   |> record.input(calculator.Divide(1))
@@ -51,7 +72,12 @@ pub fn stop_with_error_test() {
 }
 
 pub fn input_after_stop_test() {
-  record.new(0, calculator.handle_input, format_calculator)
+  record.new(
+    0,
+    calculator.handle_input,
+    format_calculator,
+    Some(string.inspect),
+  )
   |> record.input(calculator.Solve)
   |> record.time_advance(10)
   |> record.input(calculator.Solve)
@@ -60,7 +86,7 @@ pub fn input_after_stop_test() {
 }
 
 pub fn effects_and_actions_test() {
-  record.new(Nil, echoer.handle_input, format_echoer)
+  record.new(Nil, echoer.handle_input, format_echoer, Some(string.inspect))
   |> record.input(echoer.Echo(discard(), "Hello!", 1))
   |> record.input(echoer.Echo(discard(), "Hello again!!!", 3))
   |> record.to_log
@@ -68,7 +94,7 @@ pub fn effects_and_actions_test() {
 }
 
 pub fn effects_id_reset_test() {
-  record.new(Nil, echoer.handle_input, format_echoer)
+  record.new(Nil, echoer.handle_input, format_echoer, Some(string.inspect))
   |> record.input(echoer.Echo(discard(), "Hello!", 1))
   |> record.to_log
   |> birdie.snap("Effect ids should be reset to 1")
