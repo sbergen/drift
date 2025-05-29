@@ -9,7 +9,30 @@ import gleam/otp/actor
 import gleam/result
 import gleam/string
 
-pub type IoDriver(state, input, output) {
+/// The state of the wrapping actor.
+/// /// Should not be used, but must be public for supporting actor builders.
+pub opaque type State(state, io, input, output, error) {
+  State(
+    stepper: drift.Stepper(state, input),
+    timer: Option(process.Timer),
+    effect_ctx: effect.Context(io, Selector(input)),
+    io_driver: IoDriver(io, input, output),
+    self: Subject(Msg(input)),
+    base_selector: Selector(Msg(input)),
+    handle_input: fn(Context(input, output), state, input) ->
+      Step(state, input, output, error),
+  )
+}
+
+/// The message type of the wrapping actor.
+/// Should not be used, but must be public for supporting actor builders.
+pub opaque type Msg(i) {
+  Tick
+  HandleInput(i)
+}
+
+/// Holds the functions required to run the IO for a drift actor.
+pub opaque type IoDriver(state, input, output) {
   IoDriver(
     init: fn() -> #(state, Selector(input)),
     handle_output: fn(effect.Context(state, Selector(input)), output) ->
@@ -17,6 +40,7 @@ pub type IoDriver(state, input, output) {
   )
 }
 
+/// Sets up an `IoDriver` instance, for starting a drift actor.
 pub fn using_io(
   init: fn() -> #(state, Selector(input)),
   handle_output: fn(effect.Context(state, Selector(input)), output) ->
@@ -25,12 +49,35 @@ pub fn using_io(
   IoDriver(init, handle_output)
 }
 
+/// Starts a simple actor linked to the current process. No supervision.
+/// On success, messages sent to the returned `Subject` will be handled
+/// by the given input handling function, and the actor will take care of
+/// all state transitions.
 pub fn start(
   io_driver: IoDriver(io, i, o),
   timeout: Int,
   state: s,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
 ) -> Result(Subject(i), actor.StartError) {
+  builder(io_driver, timeout, state, handle_input, None, fn(_) { Nil })
+  |> actor.start()
+  |> result.map(fn(init) { init.data })
+}
+
+/// Behaves like `start`, except that it provides an actor builder that allows
+/// more configurability for advanced use cases, like supervision.
+/// NOTE: Do not reconfigure `on_message`!
+/// 
+/// If provided, `report_to` will be sent a message returned by `make_report`
+/// when the actor is initialized.
+pub fn builder(
+  io_driver: IoDriver(io, i, o),
+  timeout: Int,
+  state: s,
+  handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
+  report_to: Option(Subject(r)),
+  make_report: fn(Subject(i)) -> r,
+) -> actor.Builder(State(s, io, i, o, e), Msg(i), Subject(i)) {
   actor.new_with_initialiser(timeout, fn(self) {
     let #(io_state, input_selector) = io_driver.init()
 
@@ -62,51 +109,39 @@ pub fn start(
       )
       |> actor.returning(inputs)
 
+    case report_to {
+      Some(subject) -> process.send(subject, make_report(inputs))
+      None -> Nil
+    }
+
     Ok(init)
   })
   |> actor.on_message(handle_message)
-  |> actor.start()
-  |> result.map(fn(init) { init.data })
 }
 
+/// This function will be called from the actor process
+/// Similar to `process.call_forver`, but dispatches to the stepper. 
 pub fn call_forever(
-  subject: Subject(message),
-  make_request: fn(Effect(reply)) -> message,
+  actor: Subject(message),
+  sending make_request: fn(Effect(reply)) -> message,
 ) -> reply {
-  process.call_forever(subject, fn(reply_to) {
+  process.call_forever(actor, fn(reply_to) {
     make_request(effect.from(process.send(reply_to, _)))
   })
 }
 
+/// Similar to `process.call`, but dispatches to the stepper.
 pub fn call(
-  subject: Subject(message),
+  actor: Subject(message),
   waiting timeout: Int,
   sending make_request: fn(Effect(reply)) -> message,
 ) -> reply {
-  process.call(subject, timeout, fn(reply_to) {
+  process.call(actor, timeout, fn(reply_to) {
     make_request(effect.from(process.send(reply_to, _)))
   })
 }
 
 //==== Privates ====//
-
-type Msg(i) {
-  Tick
-  HandleInput(i)
-}
-
-type State(state, io, input, output, error) {
-  State(
-    stepper: drift.Stepper(state, input),
-    timer: Option(process.Timer),
-    effect_ctx: effect.Context(io, Selector(input)),
-    io_driver: IoDriver(io, input, output),
-    self: Subject(Msg(input)),
-    base_selector: Selector(Msg(input)),
-    handle_input: fn(Context(input, output), state, input) ->
-      Step(state, input, output, error),
-  )
-}
 
 fn handle_message(
   state: State(s, io, i, o, e),
