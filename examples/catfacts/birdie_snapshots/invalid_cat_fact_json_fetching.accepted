@@ -7,4 +7,4 @@ test_name: fetch_invalid_json_test
   --> Fetch fact #1
 <--   GET https://catfact.ninja/fact - respond to #2
   --> Complete HTTP GET #2 successfully: Not valid json!
-  !!  "UnexpectedByte(\"0x4E\")"
+  !!  Error: UnexpectedByte("0x4E")

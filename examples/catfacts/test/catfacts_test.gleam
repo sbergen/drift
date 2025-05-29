@@ -56,7 +56,7 @@ fn new_recorder() {
   )
 }
 
-fn format_message(msg: record.Message(Input, Output)) {
+fn format_message(msg: record.Message(Input, Output, String)) {
   case msg {
     record.Input(input) ->
       case input {
@@ -86,6 +86,7 @@ fn format_message(msg: record.Message(Input, Output)) {
           <> " - respond to #"
           <> string.inspect(drift.continuation_id(continuation))
       }
+    record.Error(e) -> "Error: " <> e
   }
 }
 

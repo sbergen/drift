@@ -107,15 +107,18 @@ pub fn foo_test() {
 }
 
 fn format_calculator(
-  msg: record.Message(calculator.Input, calculator.Output),
+  msg: record.Message(calculator.Input, calculator.Output, String),
 ) -> String {
   case msg {
     record.Input(i) -> string.inspect(i)
     record.Output(o) -> string.inspect(o)
+    record.Error(e) -> e
   }
 }
 
-fn format_echoer(msg: record.Message(echoer.Input, echoer.Output)) -> String {
+fn format_echoer(
+  msg: record.Message(echoer.Input, echoer.Output, String),
+) -> String {
   case msg {
     record.Input(input) ->
       case input {
@@ -137,5 +140,7 @@ fn format_echoer(msg: record.Message(echoer.Input, echoer.Output)) -> String {
           <> "\n  - Using effect #"
           <> string.inspect(effect.id(action.effect))
       }
+
+    record.Error(e) -> e
   }
 }

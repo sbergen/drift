@@ -1,6 +1,7 @@
 import drift.{type Context, type Step, type Timestamp}
 import drift/effect.{type Effect}
 import gleam/bool
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -10,7 +11,7 @@ pub opaque type Recorder(s, i, o, e) {
   Recorder(
     stepper: drift.Stepper(s, i),
     apply_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-    formatter: fn(Message(i, o)) -> String,
+    formatter: fn(Message(i, o, e)) -> String,
     final_state_formatter: Option(fn(s) -> String),
     next_tick: Option(Timestamp),
     time: Timestamp,
@@ -20,17 +21,18 @@ pub opaque type Recorder(s, i, o, e) {
   )
 }
 
-/// The union of inputs and outputs, to help with formatting.
-pub type Message(i, o) {
+/// The union of inputs, outputs and errors, to help with formatting.
+pub type Message(i, o, e) {
   Input(i)
   Output(o)
+  Error(e)
 }
 
 /// Creates a new recorder, with the given state, behavior, and formatting.
 pub fn new(
   state: s,
   apply_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-  formatter: fn(Message(i, o)) -> String,
+  formatter: fn(Message(i, o, e)) -> String,
   final_state_formatter: Option(fn(s) -> String),
 ) -> Recorder(s, i, o, e) {
   drift.reset_ids()
@@ -66,7 +68,7 @@ pub fn time_advance(
 ) -> Recorder(s, i, o, e) {
   let time = recorder.time + duration
   let recorder = {
-    let log = recorder.log <> "  ... " <> string.inspect(time) <> " ms:\n"
+    let log = recorder.log <> "  ... " <> int.to_string(time) <> " ms:\n"
     Recorder(..recorder, log:, time:)
   }
 
@@ -115,7 +117,7 @@ fn assert_ticks_exhausted(
       let log =
         recorder.log
         <> "!!!!! Next tick at "
-        <> string.inspect(next)
+        <> int.to_string(next)
         <> " !!!!!\n"
       Recorder(..recorder, log:)
     }
@@ -168,7 +170,7 @@ fn step_or_tick(
     }
 
     drift.StopWithError(_outputs, error) -> {
-      let log = log <> "  !!  " <> string.inspect(error) <> "\n"
+      let log = log <> "  !!  " <> recorder.formatter(Error(error)) <> "\n"
       Recorder(..recorder, log:, next_tick: None, stopped: True)
     }
   }
