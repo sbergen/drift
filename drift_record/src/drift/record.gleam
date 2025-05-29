@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 
+/// The state for recording the inputs and outputs of a stepper.
 pub opaque type Recorder(s, i, o, e) {
   Recorder(
     stepper: drift.Stepper(s, i),
@@ -25,6 +26,7 @@ pub type Message(i, o) {
   Output(o)
 }
 
+/// Creates a new recorder, with the given state, behavior, and formatting.
 pub fn new(
   state: s,
   apply_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
@@ -46,11 +48,18 @@ pub fn new(
   )
 }
 
+/// Applies the given input to the stepper, and returns a new recorder
+/// with the step recorded.
 pub fn input(recorder: Recorder(s, i, o, e), input: i) -> Recorder(s, i, o, e) {
   let description = recorder.formatter(Input(input))
   step_or_tick(recorder, Some(input), description)
 }
 
+/// Advances the simulated time, and returns a new recorder with the results
+/// of the possible timers being processed.
+/// Note that if the time encompasses multiple timer due times,
+/// all of them will be fired at the given time, not at their due time.
+/// This enables testing what happens if the timers fire late.
 pub fn time_advance(
   recorder: Recorder(s, i, o, e),
   duration: Int,
@@ -68,6 +77,8 @@ pub fn time_advance(
   }
 }
 
+/// Flushes all previous state, and replaces it with a message containing
+/// the provided description.
 pub fn flush(
   recorder: Recorder(s, i, o, e),
   what: String,
@@ -75,6 +86,8 @@ pub fn flush(
   Recorder(..recorder, log: "<flushed " <> what <> ">\n")
 }
 
+/// Turns the recorded steps into a string, which can be used with 
+/// snapshot testing libraries (e.g. birdie).
 pub fn to_log(recorder: Recorder(s, i, o, e)) -> String {
   string.trim_end(recorder.log)
 }
@@ -88,6 +101,8 @@ pub fn use_latest_outputs(
   with(recorder, recorder.outputs)
 }
 
+/// A utility function that creates an effect which only discards its input.
+/// You usually would not want to apply any side effects during snapshot testing.
 pub fn discard() -> Effect(a) {
   effect.from(fn(_) { Nil })
 }
