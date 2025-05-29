@@ -4,10 +4,9 @@ import catfacts
 import drift/actor
 import drift/effect
 import gleam/erlang/process.{type Selector, type Subject}
-import gleam/http
-import gleam/http/request
 import gleam/httpc
 import gleam/result
+import gleam/string
 
 /// A cat facts client
 pub opaque type Catfacts {
@@ -53,17 +52,10 @@ fn handle_output(
     // This is the main task we need to perform, an HTTP GET.
     // We make the errors fatal here for simplicity, but in real situations,
     // it would be better to report the errors to the stepper.
-    catfacts.HttpGet(url:, continuation:) -> {
-      use req <- result.try(
-        request.to(url) |> result.replace_error("Invalid URL"),
-      )
-
+    catfacts.HttpSend(request:, continuation:) -> {
       let result =
-        req
-        |> request.set_method(http.Get)
-        |> httpc.send
-        |> result.replace_error("Error requesting data")
-        |> result.map(fn(resp) { resp.body })
+        httpc.send(request)
+        |> result.map_error(string.inspect)
 
       // Report errors to the stepper.
       // Returning an error here would terminate the actor.

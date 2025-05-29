@@ -23,8 +23,8 @@ pub fn supervision_test() {
   let assert Ok(#(pid2, _)) = process.receive(children, 10)
     as "Child should restart"
 
-  assert !process.is_alive(pid1)
-  assert process.is_alive(pid2)
+  let assert False = process.is_alive(pid1)
+  let assert True = process.is_alive(pid2)
 
   process.send_exit(supervisor.pid)
 }

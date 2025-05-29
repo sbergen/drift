@@ -3,8 +3,12 @@ import catfacts.{type Input, type Output}
 import drift
 import drift/effect
 import drift/record
+import gleam/http
+import gleam/http/request
+import gleam/http/response
 import gleam/option
 import gleam/string
+import gleam/uri
 import gleeunit
 
 pub fn main() -> Nil {
@@ -19,9 +23,9 @@ pub fn fetch_valid_json_test() {
   new_recorder()
   |> record.input(catfacts.FetchFact(record.discard()))
   |> record.use_latest_outputs(fn(recorder, outputs) {
-    let assert [catfacts.HttpGet(_, continuation)] = outputs
-    let json = "{ \"fact\": \"An interesting cat fact!\" }"
-    record.input(recorder, catfacts.HttpGetCompleted(continuation, Ok(json)))
+    let assert [catfacts.HttpSend(_, continuation)] = outputs
+    let response = ok_response("{ \"fact\": \"An interesting cat fact!\" }")
+    record.input(recorder, catfacts.HttpGetCompleted(continuation, response))
   })
   |> record.to_log
   |> birdie.snap("Valid cat fact JSON fetching")
@@ -31,9 +35,9 @@ pub fn fetch_invalid_json_test() {
   new_recorder()
   |> record.input(catfacts.FetchFact(record.discard()))
   |> record.use_latest_outputs(fn(recorder, outputs) {
-    let assert [catfacts.HttpGet(_, continuation)] = outputs
-    let json = "Not valid json!"
-    record.input(recorder, catfacts.HttpGetCompleted(continuation, Ok(json)))
+    let assert [catfacts.HttpSend(_, continuation)] = outputs
+    let response = ok_response("Not valid json!")
+    record.input(recorder, catfacts.HttpGetCompleted(continuation, response))
   })
   |> record.to_log
   |> birdie.snap("Invalid cat fact JSON fetching")
@@ -63,7 +67,7 @@ fn format_message(msg: record.Message(Input, Output)) {
           "Complete HTTP GET #"
           <> string.inspect(drift.continuation_id(continuation))
           <> case result {
-            Ok(data) -> " successfully: " <> data
+            Ok(response) -> " successfully: " <> response.body
             Error(error) -> " with error: " <> error
           }
       }
@@ -75,11 +79,16 @@ fn format_message(msg: record.Message(Input, Output)) {
           <> " with: "
           <> string.inspect(completion.argument)
 
-        catfacts.HttpGet(url:, continuation:) ->
-          "GET "
-          <> url
+        catfacts.HttpSend(request:, continuation:) ->
+          http.method_to_string(request.method)
+          <> " "
+          <> uri.to_string(request.to_uri(request))
           <> " - respond to #"
           <> string.inspect(drift.continuation_id(continuation))
       }
   }
+}
+
+fn ok_response(body: String) -> Result(response.Response(String), String) {
+  Ok(response.Response(200, [], body))
 }

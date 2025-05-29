@@ -1,6 +1,13 @@
+//// Example use of drift.
+//// This example is not complex enough to actually warrant using drift.
+//// It's just a demo of some of the features.
+
 import drift
 import drift/effect.{type Action, type Effect}
 import gleam/dynamic/decode.{type Decoder}
+import gleam/http
+import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
 import gleam/json
 import gleam/result
 import gleam/string
@@ -18,14 +25,20 @@ pub type Input {
   FetchFact(Effect(String))
 
   /// Represents a completed HTTP GET, from the wrapping runtime
-  HttpGetCompleted(Continuation(Result(String, String)), Result(String, String))
+  HttpGetCompleted(
+    Continuation(Result(Response(String), String)),
+    Result(Response(String), String),
+  )
 }
 
 /// Specifies the outputs that the wrapping runtime must handle.
 pub type Output {
   /// The runtime should fetch the given url,
   /// and then continue execution with the continuation.
-  HttpGet(url: String, continuation: Continuation(Result(String, String)))
+  HttpSend(
+    request: Request(String),
+    continuation: Continuation(Result(Response(String), String)),
+  )
 
   /// Completes the fetch. The `Action` is an effect bound to a value.
   CompleteFetch(Action(String))
@@ -66,9 +79,11 @@ pub fn handle_input(ctx: Context, state: State, input: Input) -> Step {
 // Only the initial state and input handling need to be public!
 
 fn fetch_fact(ctx: Context, state: State, complete: Effect(String)) -> Step {
-  let url = "https://catfact.ninja/fact"
+  let assert Ok(request) = request.to("https://catfact.ninja/fact")
+  let request = request.set_method(request, http.Get)
+
   // We can perform continuations using the `await` function
-  use ctx, state, response <- drift.await(ctx, state, HttpGet(url, _))
+  use ctx, state, response <- drift.await(ctx, state, HttpSend(request, _))
 
   case parse_cat_fact(response) {
     // We got valid cat fact json, complete the operation!
@@ -89,9 +104,11 @@ fn fetch_fact(ctx: Context, state: State, complete: Effect(String)) -> Step {
 }
 
 /// Parses the json in a response result
-fn parse_cat_fact(response: Result(String, String)) -> Result(String, String) {
-  use json_str <- result.try(response)
-  json.parse(json_str, decode_cat_fact())
+fn parse_cat_fact(
+  response: Result(Response(String), String),
+) -> Result(String, String) {
+  use response <- result.try(response)
+  json.parse(response.body, decode_cat_fact())
   |> result.map_error(string.inspect)
 }
 

@@ -3,7 +3,7 @@ cd "$(dirname "$0")"
 
 set -e
 
-for dirname in "drift" "drift_actor" "drift_js" "drift_record" "examples/prompter" "examples/erlang_prompter" "examples/js_prompter"; do
+for dirname in "drift" "drift_actor" "drift_js" "drift_record" "examples/catfacts" "examples/catfacts_erlang" "examples/catfacts_js"; do
     pushd "$dirname" > /dev/null
     echo "======================================="
     echo " Testing $dirname"
