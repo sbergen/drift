@@ -21,7 +21,7 @@ pub fn fetch_valid_json_test() {
   |> record.use_latest_outputs(fn(recorder, outputs) {
     let assert [catfacts.HttpGet(_, continuation)] = outputs
     let json = "{ \"fact\": \"An interesting cat fact!\" }"
-    record.input(recorder, catfacts.HttpGetCompleted(continuation, json))
+    record.input(recorder, catfacts.HttpGetCompleted(continuation, Ok(json)))
   })
   |> record.to_log
   |> birdie.snap("Valid cat fact JSON fetching")
@@ -33,7 +33,7 @@ pub fn fetch_invalid_json_test() {
   |> record.use_latest_outputs(fn(recorder, outputs) {
     let assert [catfacts.HttpGet(_, continuation)] = outputs
     let json = "Not valid json!"
-    record.input(recorder, catfacts.HttpGetCompleted(continuation, json))
+    record.input(recorder, catfacts.HttpGetCompleted(continuation, Ok(json)))
   })
   |> record.to_log
   |> birdie.snap("Invalid cat fact JSON fetching")
@@ -62,8 +62,10 @@ fn format_message(msg: record.Message(Input, Output)) {
         catfacts.HttpGetCompleted(continuation, result) ->
           "Complete HTTP GET #"
           <> string.inspect(drift.continuation_id(continuation))
-          <> " with: "
-          <> result
+          <> case result {
+            Ok(data) -> " successfully: " <> data
+            Error(error) -> " with error: " <> error
+          }
       }
     record.Output(output) ->
       case output {

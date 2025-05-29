@@ -2,6 +2,7 @@ import drift
 import drift/effect.{type Action, type Effect}
 import gleam/dynamic/decode.{type Decoder}
 import gleam/json
+import gleam/result
 import gleam/string
 
 /// This is the state of our cat facts fetcher.
@@ -17,14 +18,14 @@ pub type Input {
   FetchFact(Effect(String))
 
   /// Represents a completed HTTP GET, from the wrapping runtime
-  HttpGetCompleted(Continuation(String), String)
+  HttpGetCompleted(Continuation(Result(String, String)), Result(String, String))
 }
 
 /// Specifies the outputs that the wrapping runtime must handle.
 pub type Output {
   /// The runtime should fetch the given url,
   /// and then continue execution with the continuation.
-  HttpGet(url: String, continuation: Continuation(String))
+  HttpGet(url: String, continuation: Continuation(Result(String, String)))
 
   /// Completes the fetch. The `Action` is an effect bound to a value.
   CompleteFetch(Action(String))
@@ -67,9 +68,9 @@ pub fn handle_input(ctx: Context, state: State, input: Input) -> Step {
 fn fetch_fact(ctx: Context, state: State, complete: Effect(String)) -> Step {
   let url = "https://catfact.ninja/fact"
   // We can perform continuations using the `await` function
-  use ctx, state, result <- drift.await(ctx, state, HttpGet(url, _))
+  use ctx, state, response <- drift.await(ctx, state, HttpGet(url, _))
 
-  case json.parse(result, decode_cat_fact()) {
+  case parse_cat_fact(response) {
     // We got valid cat fact json, complete the operation!
     Ok(fact) -> {
       let fact =
@@ -79,12 +80,19 @@ fn fetch_fact(ctx: Context, state: State, complete: Effect(String)) -> Step {
       |> drift.continue(State(state.fact_count + 1))
     }
 
-    // We failed to parse the json.
+    // We failed to parse the json, or the request failed.
     // This would be better handled with an output indicating an error,
     // but we stop with an error for demonstration purposes.
     // No more cat facts can be fetched after this :(
-    Error(error) -> drift.stop_with_error(ctx, string.inspect(error))
+    Error(error) -> drift.stop_with_error(ctx, error)
   }
+}
+
+/// Parses the json in a response result
+fn parse_cat_fact(response: Result(String, String)) -> Result(String, String) {
+  use json_str <- result.try(response)
+  json.parse(json_str, decode_cat_fact())
+  |> result.map_error(string.inspect)
 }
 
 /// Decodes the fact from the cat fact json

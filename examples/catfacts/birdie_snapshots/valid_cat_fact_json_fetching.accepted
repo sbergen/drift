@@ -6,5 +6,5 @@ test_name: fetch_valid_json_test
 ---
   --> Fetch fact #1
 <--   GET https://catfact.ninja/fact - respond to #2
-  --> Complete HTTP GET #2 with: { "fact": "An interesting cat fact!" }
+  --> Complete HTTP GET #2 successfully: { "fact": "An interesting cat fact!" }
 <--   Complete fetch #1 with: "Cat fact #1: An interesting cat fact!"
