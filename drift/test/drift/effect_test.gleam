@@ -1,4 +1,5 @@
 import drift/effect
+import drift/internal/id
 import gleeunit/should
 
 pub fn effect_uniqueness_test() {
@@ -19,14 +20,14 @@ pub fn effect_uniqueness_test() {
 }
 
 pub fn effect_id_test() {
-  effect.reset_id()
+  id.reset()
   let effect_a = effect.from(test_fn)
   let effect_b = effect.from(test_fn)
 
   effect.id(effect_a) |> should.equal(1)
   effect.id(effect_b) |> should.equal(2)
 
-  effect.reset_id()
+  id.reset()
   let effect_c = effect.from(test_fn)
   effect.id(effect_c) |> should.equal(1)
 }

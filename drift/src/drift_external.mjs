@@ -1,9 +1,9 @@
-let effect_id = 0;
+let id = 0;
 
-export function get_effect_id() {
-    return ++effect_id;
+export function get_id() {
+    return ++id;
 }
 
-export function reset_effect_id() {
-    effect_id = 0;
+export function reset_id() {
+    id = 0;
 }

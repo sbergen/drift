@@ -1,5 +1,7 @@
 //// Manage side effects.
 
+import drift/internal/id
+
 /// Represents a context in which effects may be applied.
 /// May hold state (or Nil, if no state is needed).
 /// An effect context can only be constructed when starting a stepper,
@@ -58,7 +60,7 @@ pub type Action(a) {
 /// 2) Having a distinct id allows writing nice snapshot tests, where
 ///    effects can be identified in the output.
 pub fn from(effect: fn(a) -> Nil) -> Effect(a) {
-  Effect(get_id(), effect)
+  Effect(id.get(), effect)
 }
 
 /// Binds a value to an effect, to be performed by the impure context.
@@ -72,17 +74,7 @@ pub fn perform(ctx: Context(s, i), action: Action(_)) -> Context(s, i) {
   ctx
 }
 
-/// Resets the effect id counter, to get deterministic ids.
-/// Should only really be needed for tests.
-@external(erlang, "drift_external", "reset_effect_id")
-@external(javascript, "../drift_external.mjs", "reset_effect_id")
-pub fn reset_id() -> Nil
-
 /// Get the id of an effect. This should only really be needed for tests.
 pub fn id(effect: Effect(a)) -> Int {
   effect.id
 }
-
-@external(erlang, "drift_external", "get_effect_id")
-@external(javascript, "../drift_external.mjs", "get_effect_id")
-fn get_id() -> Int

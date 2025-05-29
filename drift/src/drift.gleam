@@ -9,6 +9,7 @@
 //// Execution of the stepper should stop with the final effects applied.
 
 import drift/effect
+import drift/internal/id
 import drift/internal/timer
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -151,9 +152,8 @@ pub fn await(
   make_output: fn(Continuation(a, s, i, o, e)) -> o,
   continuation: fn(Context(i, o), s, a) -> Step(s, i, o, e),
 ) -> Step(s, i, o, e) {
-  // TODO: numbering
   context
-  |> output(make_output(Continuation(0, continuation)))
+  |> output(make_output(Continuation(id.get(), continuation)))
   |> continue(state)
 }
 
@@ -165,6 +165,11 @@ pub fn resume(
   result: a,
 ) -> Step(s, i, o, e) {
   continuation.function(context, state, result)
+}
+
+/// Gets the id of the continuation. Should only really be needed for tests.
+pub fn continuation_id(continuation: Continuation(_, _, _, _, _)) -> Int {
+  continuation.id
 }
 
 /// Holds the current state and active timers.
@@ -259,4 +264,11 @@ pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
 
     StopStep(effects, state) -> Stop(list.reverse(effects), state)
   }
+}
+
+/// Resets the id counter used for effects and continuations,
+/// to get deterministic ids.
+/// Should only really be needed for tests.
+pub fn reset_ids() -> Nil {
+  id.reset()
 }

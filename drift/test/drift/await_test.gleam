@@ -21,6 +21,9 @@ pub fn continuation_test() {
 
   complete1.argument |> should.equal("wibblewibble")
   complete2.argument |> should.equal("wibblewibblewobble")
+
+  drift.continuation_id(fetch1)
+  |> should.not_equal(drift.continuation_id(fetch2))
 }
 
 type Error =
