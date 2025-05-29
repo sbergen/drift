@@ -10,10 +10,11 @@ pub opaque type Recorder(s, i, o, e) {
     stepper: drift.Stepper(s, i),
     apply_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
     formatter: fn(Message(i, o)) -> String,
-    stop_formatter: Option(fn(s) -> String),
+    final_state_formatter: Option(fn(s) -> String),
     next_tick: Option(Timestamp),
     time: Timestamp,
     log: String,
+    outputs: List(o),
     stopped: Bool,
   )
 }
@@ -28,11 +29,21 @@ pub fn new(
   state: s,
   apply_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   formatter: fn(Message(i, o)) -> String,
-  stop_formatter: Option(fn(s) -> String),
+  final_state_formatter: Option(fn(s) -> String),
 ) -> Recorder(s, i, o, e) {
   drift.reset_ids()
   let #(stepper, _effect_ctx) = drift.new(state, Nil, Nil)
-  Recorder(stepper, apply_input, formatter, stop_formatter, None, 0, "", False)
+  Recorder(
+    stepper:,
+    apply_input:,
+    formatter:,
+    final_state_formatter:,
+    next_tick: None,
+    time: 0,
+    log: "",
+    outputs: [],
+    stopped: False,
+  )
 }
 
 pub fn input(recorder: Recorder(s, i, o, e), input: i) -> Recorder(s, i, o, e) {
@@ -66,6 +77,15 @@ pub fn flush(
 
 pub fn to_log(recorder: Recorder(s, i, o, e)) -> String {
   string.trim_end(recorder.log)
+}
+
+/// Applies the given function that produces the next state of the recorder
+/// from the outputs of the previously executed step.
+pub fn use_latest_outputs(
+  recorder: Recorder(s, i, o, e),
+  with: fn(Recorder(s, i, o, e), List(o)) -> Recorder(s, i, o, e),
+) -> Recorder(s, i, o, e) {
+  with(recorder, recorder.outputs)
 }
 
 pub fn discard() -> Effect(a) {
@@ -115,6 +135,7 @@ fn step_or_tick(
     |> list.map(Output)
     |> list.map(recorder.formatter)
   let log = output_list(log, True, outputs)
+  let recorder = Recorder(..recorder, outputs: next.outputs)
 
   case next {
     drift.Continue(_outputs, stepper, next_tick) ->
@@ -124,7 +145,7 @@ fn step_or_tick(
       let log =
         log
         <> "===== Stopped!\n"
-        <> case recorder.stop_formatter {
+        <> case recorder.final_state_formatter {
           Some(format) -> format(state) <> "\n"
           None -> ""
         }
