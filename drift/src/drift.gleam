@@ -134,6 +134,39 @@ pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
   StopStepWithError(context.outputs, error)
 }
 
+/// Represents a continuation in the purely functional context,
+/// which will be called with a new context and state when resumed.
+/// Allows handing external inputs of one type in a generic way in multiple
+/// different use cases.
+pub opaque type Continuation(a, s, i, o, e) {
+  Continuation(id: Int, function: fn(Context(i, o), s, a) -> Step(s, i, o, e))
+}
+
+/// Completes the current step with the given state and adds the output
+/// constructed by `make_output`. `continuation` will be executed with the new
+/// context and state when it is resumed.
+pub fn await(
+  context: Context(i, o),
+  state: s,
+  make_output: fn(Continuation(a, s, i, o, e)) -> o,
+  continuation: fn(Context(i, o), s, a) -> Step(s, i, o, e),
+) -> Step(s, i, o, e) {
+  // TODO: numbering
+  context
+  |> output(make_output(Continuation(0, continuation)))
+  |> continue(state)
+}
+
+/// Resumes execution of a continuation.
+pub fn resume(
+  context: Context(i, o),
+  state: s,
+  continuation: Continuation(a, s, i, o, e),
+  result: a,
+) -> Step(s, i, o, e) {
+  continuation.function(context, state, result)
+}
+
 /// Holds the current state and active timers.
 pub opaque type Stepper(state, input) {
   Stepper(state: state, timers: timer.Timers(input))
