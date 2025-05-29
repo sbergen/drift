@@ -1,6 +1,8 @@
 import drift.{type Context, type Step}
 import drift/effect.{type Effect}
-import drift/js/internal/event_loop.{type EventLoop, HandleInput, Tick}
+import drift/js/internal/event_loop.{
+  type EventLoop, type EventLoopError, HandleInput, Tick,
+}
 import gleam/int
 import gleam/javascript/promise.{type Promise, await}
 import gleam/list
@@ -14,6 +16,17 @@ pub opaque type Runtime(i) {
 pub type CallError {
   RuntimeStopped
   CallTimedOut
+}
+
+/// The result of a runtime terminating.
+pub type TerminalResult(a, e) {
+  /// The runtime terminated successfully, with `drift.stop`.
+  Terminated(a)
+  /// The runtime ran into a failure, either through `dirft.stop_with_error`,
+  /// or an error occurring during output handling.
+  Failed(e)
+  /// The runtime ran into an error. This is probably a bug in drift_js!
+  RuntimeError(String)
 }
 
 /// Sends an input to be handled by the runtime.
@@ -56,7 +69,7 @@ pub fn start(
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   handle_output: fn(effect.Context(io, Nil), o, fn(i) -> Nil) ->
     Result(effect.Context(io, Nil), e),
-) -> #(Promise(Result(s, e)), Runtime(i)) {
+) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {
   let loop = event_loop.start()
   let runtime = Runtime(loop)
   let #(stepper, io) = drift.new(state, create_io(runtime), Nil)
@@ -72,9 +85,8 @@ fn do_loop(
   io: io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
   handle_output: fn(io, o) -> Result(io, e),
-) -> Promise(Result(s, e)) {
-  // TODO: Decide what to do with errors that shouldn't happen
-  let assert Ok(next) = event_loop.receive(loop)
+) -> Promise(TerminalResult(s, e)) {
+  use next <- try(event_loop.receive(loop))
   use message <- await(next)
   let now = now()
 
@@ -93,28 +105,43 @@ fn do_loop(
 
   case next {
     drift.Continue(_effects, stepper, due_time) -> {
-      case due_time {
-        Some(due_time) -> {
-          // TODO: Error handling
-          let assert Ok(Nil) =
-            event_loop.set_timeout(loop, int.max(0, due_time - now))
-          Nil
-        }
-
-        None -> Nil
-      }
+      use _ <- try(case due_time {
+        Some(due_time) ->
+          event_loop.set_timeout(loop, int.max(0, due_time - now))
+        None -> Ok(Nil)
+      })
 
       case io {
         Ok(io) -> do_loop(loop, stepper, io, handle_input, handle_output)
-        Error(error) -> stop(loop, Error(error))
+        Error(error) -> stop(loop, Failed(error))
       }
     }
-    drift.Stop(_effects, state) -> stop(loop, Ok(state))
-    drift.StopWithError(_effects, error) -> stop(loop, Error(error))
+    drift.Stop(_effects, state) -> stop(loop, Terminated(state))
+    drift.StopWithError(_effects, error) -> stop(loop, Failed(error))
   }
 }
 
-fn stop(loop: EventLoop(i), result: Result(a, e)) -> Promise(Result(a, e)) {
+fn try(
+  result: Result(a, EventLoopError),
+  apply: fn(a) -> Promise(TerminalResult(s, e)),
+) -> Promise(TerminalResult(s, e)) {
+  case result {
+    Ok(a) -> apply(a)
+    Error(e) ->
+      promise.resolve(
+        RuntimeError(case e {
+          event_loop.AlreadyReceiving -> "Event loop double receive"
+          event_loop.AlreadyTicking -> "Event loop double timeout"
+          event_loop.Stopped -> "Event loop stopped"
+        }),
+      )
+  }
+}
+
+fn stop(
+  loop: EventLoop(i),
+  result: TerminalResult(a, e),
+) -> Promise(TerminalResult(a, e)) {
   event_loop.stop(loop)
   promise.resolve(result)
 }

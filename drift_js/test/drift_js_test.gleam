@@ -1,6 +1,8 @@
 import drift.{type Context, type Step}
 import drift/effect.{type Action, type Effect}
-import drift/js/runtime.{type Runtime, CallTimedOut, RuntimeStopped}
+import drift/js/runtime.{
+  type Runtime, type TerminalResult, CallTimedOut, RuntimeStopped,
+}
 import gleam/javascript/promise.{type Promise, await}
 import gleeunit
 
@@ -20,7 +22,7 @@ pub fn run_result_resolves_when_stopped_test() -> Promise(Nil) {
   // Trigger the stop
   runtime.send(rt, True)
   use result <- await(result)
-  let assert Ok(Nil) = result
+  let assert runtime.Terminated(Nil) = result
   promise.resolve(Nil)
 }
 
@@ -130,7 +132,7 @@ fn stop(ctx: Context(Bool, o), state: s, stop: Bool) -> Step(s, Bool, o, e) {
 pub fn start_with_action_executor(
   state: s,
   next: fn(Context(i, Action(a)), s, i) -> Step(s, i, Action(a), e),
-) -> #(Promise(Result(s, e)), Runtime(i)) {
+) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {
   runtime.start(state, fn(_) { Nil }, next, fn(ctx, action, _) {
     effect.perform(ctx, action)
     Ok(ctx)
@@ -140,7 +142,7 @@ pub fn start_with_action_executor(
 pub fn start_without_io(
   state: s,
   next: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-) -> #(Promise(Result(s, e)), Runtime(i)) {
+) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {
   runtime.start(state, fn(_) { Nil }, next, fn(ctx, _, _) { Ok(ctx) })
 }
 
