@@ -1,16 +1,3 @@
-# drift_record
-
-[![Package Version](https://img.shields.io/hexpm/v/drift_recorder)](https://hex.pm/packages/drift_recorder)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/drift_recorder/)
-
-Record logs for `drift` cores, and use them in snapshot tests!
-
-```sh
-gleam add birdie@1
-gleam add drift@1
-gleam add drift_record@1
-```
-```gleam
 import birdie
 import drift
 import drift/record
@@ -48,5 +35,3 @@ fn sum_input(
   |> drift.output(sum)
   |> drift.continue(sum)
 }
-
-```

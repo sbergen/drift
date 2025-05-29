@@ -1,18 +1,17 @@
-# NOTE!
-
-This is work heavily in progress!
-
 # drift
 
-`drift` is a Gleam library for creating highly asynchronous "functional cores",
-which can be wrapped with different I/O and timer implementations,
-depending on the environment they are running in.
-The idea is that a stepper, which holds state and timers, can be updated
-in steps, producing a new stepper, the next timer due time, and a list of
-outputs. 
-`drift` provides a bunch of data types and functions to make handling
-this easier.
+`drift` is a Gleam library for creating highly asynchronous pure functional cores,
+which can be wrapped with different I/O and timer implementations.
+These cores can be used on both the Erlang and JavaScript targets.
+Side effects are tracked by producing outputs on every step,
+and executing the side effects is left to be done by a wrapping runtime.
 
-# drift_actor
+This repository contains the following packages:
+* [`drift`](drift) contains the core utilities for writing pure functional logic.
+* [`drift_actor`](drift_actor) can wrap a core written with drift in an OTP actor.
+* [`drift_js`](drift_js) can wrap a core written with drift in an event loop on the JS target.
+* [`drift_record`](drift_record) contains utilities to record the inputs and 
+  outputs of a drift core in a snapshot-testing friendly manner.
 
-`drift_actor` includes an wrappers to run a `drift` stepper inside an OTP actor.
+The [examples](examples) directory contains a simple drift core that can fetch
+cat facts, and wrappers for both the Erlang and JavaScript targets.

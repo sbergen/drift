@@ -9,12 +9,16 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 
+/// Holds the event loop for running a stepper.
 pub opaque type Runtime(i) {
   Runtime(loop: EventLoop(i))
 }
 
+/// Errors that can happen when using `call` (or `call_forever`).
 pub type CallError {
+  /// The runtime stopped while a call was active.
   RuntimeStopped
+  /// The call took longer than what was provided as the timeout value.
   CallTimedOut
 }
 
@@ -34,6 +38,7 @@ pub fn send(runtime: Runtime(i), input: i) -> Nil {
   event_loop.send(runtime.loop, input)
 }
 
+/// Similar to `process.call_forever` on Gleam on Erlang.
 pub fn call_forever(
   runtime: Runtime(i),
   make_request: fn(Effect(a)) -> i,
@@ -45,6 +50,7 @@ pub fn call_forever(
   event_loop.error_if_stopped(runtime.loop, promise, RuntimeStopped)
 }
 
+/// Similar to `process.call` on Gleam on Erlang.
 pub fn call(
   runtime: Runtime(i),
   waiting timeout: Int,
@@ -63,6 +69,7 @@ pub fn call(
   promise.race_list([result, timeout])
 }
 
+/// Starts a new runtime with the given state and IO handlers.
 pub fn start(
   state: s,
   create_io: fn(Runtime(i)) -> io,

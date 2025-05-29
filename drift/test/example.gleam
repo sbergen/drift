@@ -1,20 +1,3 @@
-# drift
-
-[![Package Version](https://img.shields.io/hexpm/v/drift)](https://hex.pm/packages/drift)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/drift/)
-
-`drift` is a Gleam library for creating highly asynchronous pure functional cores,
-which can be wrapped with different I/O and timer implementations.
-This is the core package, which enables defining state transitions,
-handing inputs and outputs, and using timers.
-
-The `drift_actor` and `drift_js` packages can be used to run core logic
-on both Gleam targets.
-
-```sh
-gleam add drift@1
-```
-```gleam
 import drift
 import gleam/option.{type Option, None, Some}
 
@@ -48,4 +31,3 @@ fn sum_numbers(
     None -> drift.stop(ctx, state)
   }
 }
-```
