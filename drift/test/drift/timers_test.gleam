@@ -76,3 +76,18 @@ pub fn cancel_all_timers_test() {
 
   Nil
 }
+
+pub fn now_has_step_start_test() {
+  let #(stepper, _) = drift.new(Nil, Nil, Nil)
+  drift.step(stepper, 42, Input(0), fn(ctx, state, _) {
+    drift.now(ctx) |> should.equal(42)
+    drift.continue(ctx, state)
+  })
+
+  drift.step(stepper, 43, Input(0), fn(ctx, state, _) {
+    drift.now(ctx) |> should.equal(43)
+    drift.continue(ctx, state)
+  })
+
+  Nil
+}
