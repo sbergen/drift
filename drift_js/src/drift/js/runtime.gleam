@@ -11,6 +11,11 @@ pub opaque type Runtime(i) {
   Runtime(loop: EventLoop(i))
 }
 
+pub type CallError {
+  RuntimeStopped
+  CallTimedOut
+}
+
 /// Sends an input to be handled by the runtime.
 pub fn send(runtime: Runtime(i), input: i) -> Nil {
   event_loop.send(runtime.loop, input)
@@ -19,12 +24,30 @@ pub fn send(runtime: Runtime(i), input: i) -> Nil {
 pub fn call_forever(
   runtime: Runtime(i),
   make_request: fn(Effect(a)) -> i,
-) -> Promise(Result(a, Nil)) {
+) -> Promise(Result(a, CallError)) {
   let #(promise, resolve) = promise.start()
   let deferred = effect.from(resolve)
 
   event_loop.send(runtime.loop, make_request(deferred))
-  event_loop.error_if_stopped(runtime.loop, promise, Nil)
+  event_loop.error_if_stopped(runtime.loop, promise, RuntimeStopped)
+}
+
+pub fn call(
+  runtime: Runtime(i),
+  waiting timeout: Int,
+  sending make_request: fn(Effect(a)) -> i,
+) -> Promise(Result(a, CallError)) {
+  let #(promise, resolve) = promise.start()
+  let deferred = effect.from(resolve)
+
+  event_loop.send(runtime.loop, make_request(deferred))
+  let result =
+    event_loop.error_if_stopped(runtime.loop, promise, RuntimeStopped)
+  let timeout =
+    promise.wait(timeout)
+    |> promise.map(fn(_) { Error(CallTimedOut) })
+
+  promise.race_list([result, timeout])
 }
 
 pub fn start(
