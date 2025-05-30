@@ -36,7 +36,5 @@ pub fn main() {
   process.send(subject, None)
 
   // But we need to wait for the message to be handled...
-  let wait = process.new_subject()
-  process.send_after(wait, 100, Nil)
-  process.receive_forever(wait)
+  process.sleep(100)
 }
