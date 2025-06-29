@@ -11,7 +11,7 @@ pub fn supervision_test() {
 
   let assert Ok(supervisor) =
     static_supervisor.new(static_supervisor.OneForOne)
-    |> static_supervisor.add(init_panicing_child(children))
+    |> static_supervisor.add(init_panicking_child(children))
     |> static_supervisor.start
 
   let assert Ok(#(pid1, inputs)) = process.receive(children, 10)
@@ -29,7 +29,7 @@ pub fn supervision_test() {
   process.send_exit(supervisor.pid)
 }
 
-fn init_panicing_child(
+fn init_panicking_child(
   subject: Subject(#(Pid, Subject(Nil))),
 ) -> supervision.ChildSpecification(Subject(Nil)) {
   supervision.worker(fn() {

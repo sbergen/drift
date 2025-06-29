@@ -1,3 +1,4 @@
+import gleam/int
 import birdie
 import catfacts.{type Input, type Output}
 import drift
@@ -7,7 +8,6 @@ import gleam/http
 import gleam/http/request
 import gleam/http/response
 import gleam/option
-import gleam/string
 import gleam/uri
 import gleeunit
 
@@ -61,11 +61,11 @@ fn format_message(msg: record.Message(Input, Output, String)) {
     record.Input(input) ->
       case input {
         catfacts.FetchFact(complete) ->
-          "Fetch fact #" <> string.inspect(effect.id(complete))
+          "Fetch fact #" <> int.to_string(effect.id(complete))
 
         catfacts.HttpGetCompleted(continuation, result) ->
           "Complete HTTP GET #"
-          <> string.inspect(drift.continuation_id(continuation))
+          <> int.to_string(drift.continuation_id(continuation))
           <> case result {
             Ok(response) -> " successfully: " <> response.body
             Error(error) -> " with error: " <> error
@@ -75,16 +75,16 @@ fn format_message(msg: record.Message(Input, Output, String)) {
       case output {
         catfacts.CompleteFetch(completion) ->
           "Complete fetch #"
-          <> string.inspect(effect.id(completion.effect))
+          <> int.to_string(effect.id(completion.effect))
           <> " with: "
-          <> string.inspect(completion.argument)
+          <> completion.argument
 
         catfacts.HttpSend(request:, continuation:) ->
           http.method_to_string(request.method)
           <> " "
           <> uri.to_string(request.to_uri(request))
           <> " - respond to #"
-          <> string.inspect(drift.continuation_id(continuation))
+          <> int.to_string(drift.continuation_id(continuation))
       }
     record.Error(e) -> "Error: " <> e
   }

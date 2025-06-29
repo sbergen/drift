@@ -14,8 +14,8 @@ gleam add drift_record@1
 import birdie
 import drift
 import drift/record
+import gleam/int
 import gleam/option.{None}
-import gleam/string
 
 pub fn main() {
   // Will produce this snapshot
@@ -30,10 +30,11 @@ pub fn main() {
   |> birdie.snap("Example of drift_record")
 }
 
-fn format(msg: record.Message(Int, Int)) -> String {
+fn format(msg: record.Message(Int, Int, String)) -> String {
   case msg {
-    record.Input(i) -> "Adding: " <> string.inspect(i)
-    record.Output(i) -> "Sum: " <> string.inspect(i)
+    record.Input(i) -> "Adding: " <> int.to_string(i)
+    record.Output(i) -> "Sum: " <> int.to_string(i)
+    record.Error(e) -> "Error: " <> e
   }
 }
 
@@ -42,11 +43,10 @@ fn sum_input(
   ctx: drift.Context(Int, Int),
   state: Int,
   input: Int,
-) -> drift.Step(Int, Int, Int, a) {
+) -> drift.Step(Int, Int, Int, String) {
   let sum = state + input
   ctx
   |> drift.output(sum)
   |> drift.continue(sum)
 }
-
 ```

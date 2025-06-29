@@ -1,8 +1,8 @@
 import birdie
 import drift
 import drift/record
+import gleam/int
 import gleam/option.{None}
-import gleam/string
 
 pub fn main() {
   // Will produce this snapshot
@@ -19,8 +19,8 @@ pub fn main() {
 
 fn format(msg: record.Message(Int, Int, String)) -> String {
   case msg {
-    record.Input(i) -> "Adding: " <> string.inspect(i)
-    record.Output(i) -> "Sum: " <> string.inspect(i)
+    record.Input(i) -> "Adding: " <> int.to_string(i)
+    record.Output(i) -> "Sum: " <> int.to_string(i)
     record.Error(e) -> "Error: " <> e
   }
 }

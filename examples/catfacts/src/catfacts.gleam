@@ -8,6 +8,7 @@ import gleam/dynamic/decode.{type Decoder}
 import gleam/http
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/int
 import gleam/json
 import gleam/result
 import gleam/string
@@ -88,8 +89,7 @@ fn fetch_fact(ctx: Context, state: State, complete: Effect(String)) -> Step {
   case parse_cat_fact(response) {
     // We got valid cat fact json, complete the operation!
     Ok(fact) -> {
-      let fact =
-        "Cat fact #" <> string.inspect(state.fact_count) <> ": " <> fact
+      let fact = "Cat fact #" <> int.to_string(state.fact_count) <> ": " <> fact
       ctx
       |> drift.perform(CompleteFetch, complete, fact)
       |> drift.continue(State(state.fact_count + 1))

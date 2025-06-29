@@ -10,7 +10,7 @@ import gleam/result
 import gleam/string
 
 /// The state of the wrapping actor.
-/// /// Should not be used, but must be public for supporting actor builders.
+/// Should not be directly used, but must be public for supporting actor builders.
 pub opaque type State(state, io, input, output, error) {
   State(
     stepper: drift.Stepper(state, input),
@@ -25,7 +25,7 @@ pub opaque type State(state, io, input, output, error) {
 }
 
 /// The message type of the wrapping actor.
-/// Should not be used, but must be public for supporting actor builders.
+/// Should not be directly used, but must be public for supporting actor builders.
 pub opaque type Msg(i) {
   Tick
   HandleInput(i)
@@ -41,6 +41,10 @@ pub opaque type IoDriver(state, input, output) {
 }
 
 /// Sets up an `IoDriver` instance, for starting a drift actor.
+/// The init function will be called from the actor process,
+/// and should return the initial state and input selector.
+/// The output handler function gets the effect context and output as arguments,
+/// and return the new effect context or an error.
 pub fn using_io(
   init: fn() -> #(state, Selector(input)),
   handle_output: fn(effect.Context(state, Selector(input)), output) ->
