@@ -50,8 +50,6 @@ fn handle_output(
     catfacts.CompleteFetch(complete) -> Ok(effect.perform(ctx, complete))
 
     // This is the main task we need to perform, an HTTP GET.
-    // We make the errors fatal here for simplicity, but in real situations,
-    // it would be better to report the errors to the stepper.
     catfacts.HttpSend(request:, continuation:) -> {
       let result =
         httpc.send(request)
