@@ -18,7 +18,7 @@ packages = [
 catfacts = { path = "../catfacts" }
 drift = { path = "../../drift" }
 drift_actor = { path = "../../drift_actor" }
-gleam_erlang = { version = ">= 1.0.0-rc1 and < 2.0.0" }
+gleam_erlang = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_http = { version = ">= 4.0.0 and < 5.0.0" }
 gleam_httpc = { version = ">= 4.1.1 and < 5.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
