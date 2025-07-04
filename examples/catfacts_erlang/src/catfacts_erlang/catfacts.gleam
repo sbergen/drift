@@ -1,8 +1,8 @@
 //// The erlang actor-based implementation for the drift catfacts example.
 
 import catfacts
+import drift.{type EffectContext}
 import drift/actor
-import drift/effect
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/httpc
 import gleam/result
@@ -41,13 +41,13 @@ fn new_io() -> IoState {
 
 /// The main IO driver function for our Erlang cat facts implementation
 fn handle_output(
-  ctx: effect.Context(IoState),
+  ctx: EffectContext(IoState),
   output: catfacts.Output,
-) -> Result(effect.Context(IoState), String) {
+) -> Result(EffectContext(IoState), String) {
   case output {
     // side effects must be completed outside of the pure context.
     // For simple side effects, we can just call `effect.perform`.
-    catfacts.CompleteFetch(complete) -> Ok(effect.perform(ctx, complete))
+    catfacts.CompleteFetch(complete) -> Ok(drift.perform_effect(ctx, complete))
 
     // This is the main task we need to perform, an HTTP GET.
     catfacts.HttpSend(request:, continuation:) -> {
@@ -58,7 +58,7 @@ fn handle_output(
       // Report errors to the stepper.
       // Returning an error here would terminate the actor.
       Ok({
-        use state <- effect.map_context(ctx)
+        use state <- drift.use_effect_context(ctx)
         process.send(
           state.self,
           catfacts.HttpGetCompleted(continuation, result),

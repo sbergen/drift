@@ -1,5 +1,4 @@
-import drift.{type Context, type Step, type Timestamp}
-import drift/effect.{type Effect}
+import drift.{type Context, type Effect, type Step, type Timestamp}
 import gleam/bool
 import gleam/int
 import gleam/list
@@ -106,7 +105,7 @@ pub fn use_latest_outputs(
 /// A utility function that creates an effect which only discards its input.
 /// You usually would not want to apply any side effects during snapshot testing.
 pub fn discard() -> Effect(a) {
-  effect.from(fn(_) { Nil })
+  drift.new_effect(fn(_) { Nil })
 }
 
 fn assert_ticks_exhausted(

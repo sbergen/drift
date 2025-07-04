@@ -1,6 +1,5 @@
-import drift
+import drift.{type Action, type Effect}
 import drift/actor
-import drift/effect.{type Action, type Effect}
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 
@@ -14,7 +13,7 @@ pub fn new() -> Subject(Input) {
       fn(_) { selector },
       fn(ctx, output) {
         let ApplyEcho(action) = output
-        Ok(effect.perform(ctx, action))
+        Ok(drift.perform_effect(ctx, action))
       },
     )
     |> actor.start(100, State(0, dict.new()), handle_input)

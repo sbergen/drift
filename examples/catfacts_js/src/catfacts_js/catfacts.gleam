@@ -1,5 +1,5 @@
 import catfacts
-import drift/effect
+import drift.{type EffectContext}
 import drift/js/runtime.{type Runtime}
 import gleam/fetch
 import gleam/javascript/promise.{type Promise}
@@ -44,14 +44,14 @@ pub fn fetch(client: Catfacts) -> Promise(String) {
 
 /// The main IO driver function for our Erlang cat facts implementation
 fn handle_output(
-  ctx: effect.Context(Nil),
+  ctx: EffectContext(Nil),
   output: catfacts.Output,
   send: fn(catfacts.Input) -> Nil,
-) -> Result(effect.Context(Nil), String) {
+) -> Result(EffectContext(Nil), String) {
   case output {
     // side effects must be completed outside of the pure context.
     // For simple side effects, we can just call `effect.perform`.
-    catfacts.CompleteFetch(complete) -> Ok(effect.perform(ctx, complete))
+    catfacts.CompleteFetch(complete) -> Ok(drift.perform_effect(ctx, complete))
 
     // This is the main task we need to perform, an HTTP GET.
     // We make the errors fatal here for simplicity, but in real situations,

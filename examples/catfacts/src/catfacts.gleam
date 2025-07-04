@@ -2,8 +2,7 @@
 //// This example is not complex enough to actually warrant using drift.
 //// It's just a demo of some of the features.
 
-import drift
-import drift/effect.{type Action, type Effect}
+import drift.{type Action, type Effect}
 import gleam/dynamic/decode.{type Decoder}
 import gleam/http
 import gleam/http/request.{type Request}

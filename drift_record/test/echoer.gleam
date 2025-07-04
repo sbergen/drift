@@ -1,7 +1,6 @@
 //// Simple example using effects and actions
 
-import drift
-import drift/effect.{type Action, type Effect}
+import drift.{type Action, type Effect}
 import gleam/list
 
 pub type Input {
@@ -18,7 +17,7 @@ pub fn handle_input(
   input: Input,
 ) -> drift.Step(Nil, Input, Output, String) {
   let Echo(complete, value, times) = input
-  let outputs = list.repeat(Reply(effect.bind(complete, value)), times)
+  let outputs = list.repeat(Reply(drift.bind_effect(complete, value)), times)
 
   context
   |> drift.output_many(outputs)

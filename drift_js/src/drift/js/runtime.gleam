@@ -1,5 +1,4 @@
-import drift.{type Context, type Step}
-import drift/effect.{type Effect}
+import drift.{type Context, type Effect, type EffectContext, type Step}
 import drift/js/internal/event_loop.{
   type EventLoop, type EventLoopError, HandleInput, Tick,
 }
@@ -44,7 +43,7 @@ pub fn call_forever(
   make_request: fn(Effect(a)) -> i,
 ) -> Promise(Result(a, CallError)) {
   let #(promise, resolve) = promise.start()
-  let deferred = effect.from(resolve)
+  let deferred = drift.new_effect(resolve)
 
   event_loop.send(runtime.loop, make_request(deferred))
   event_loop.error_if_stopped(runtime.loop, promise, RuntimeStopped)
@@ -57,7 +56,7 @@ pub fn call(
   sending make_request: fn(Effect(a)) -> i,
 ) -> Promise(Result(a, CallError)) {
   let #(promise, resolve) = promise.start()
-  let deferred = effect.from(resolve)
+  let deferred = drift.new_effect(resolve)
 
   event_loop.send(runtime.loop, make_request(deferred))
   let result =
@@ -74,8 +73,8 @@ pub fn start(
   state: s,
   create_io: fn(Runtime(i)) -> io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-  handle_output: fn(effect.Context(io), o, fn(i) -> Nil) ->
-    Result(effect.Context(io), e),
+  handle_output: fn(EffectContext(io), o, fn(i) -> Nil) ->
+    Result(EffectContext(io), e),
 ) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {
   let loop = event_loop.start()
   let runtime = Runtime(loop)

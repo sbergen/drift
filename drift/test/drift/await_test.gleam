@@ -1,11 +1,10 @@
-import drift
-import drift/effect.{type Action, type Effect}
+import drift.{type Action, type Effect}
 import gleam/string
 import gleeunit/should
 
 pub fn continuation_test() {
   let #(stepper, _) = drift.new("", Nil)
-  let discard = effect.from(fn(_) { Nil })
+  let discard = drift.new_effect(fn(_) { Nil })
 
   let assert drift.Continue([FetchString(fetch1)], stepper, _) =
     drift.step(stepper, 0, Append(1, discard), handle_input)

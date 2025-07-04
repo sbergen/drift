@@ -8,7 +8,6 @@
 //// this easier.
 //// Execution of the stepper should stop with the final effects applied.
 
-import drift/effect
 import drift/internal/id
 import drift/internal/timer
 import gleam/list
@@ -88,11 +87,11 @@ pub fn output_many(context: Context(i, o), outputs: List(o)) -> Context(i, o) {
 /// A shorthand for outputting effects to be performed.
 pub fn perform(
   context: Context(i, o),
-  make_output: fn(effect.Action(a)) -> o,
-  effect: effect.Effect(a),
+  make_output: fn(Action(a)) -> o,
+  effect: Effect(a),
   arg: a,
 ) -> Context(i, o) {
-  output(context, make_output(effect.bind(effect, arg)))
+  output(context, make_output(bind_effect(effect, arg)))
 }
 
 /// An ongoing stepper update, which may update the state, timers,
@@ -178,8 +177,8 @@ pub opaque type Stepper(state, input) {
 }
 
 /// Creates a new stepper with the given state for the pure and effectful parts.
-pub fn new(state: s, io_state: io) -> #(Stepper(s, i), effect.Context(io)) {
-  #(Stepper(state, timer.new()), effect.new_context(io_state))
+pub fn new(state: s, io_state: io) -> #(Stepper(s, i), EffectContext(io)) {
+  #(Stepper(state, timer.new()), EffectContext(io_state))
 }
 
 /// Represents the next state of a stepper,
@@ -260,6 +259,71 @@ pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
 
     StopStep(effects, state) -> Stop(list.reverse(effects), state)
   }
+}
+
+/// Represents a context in which effects may be applied.
+/// May hold state (or Nil, if no state is needed).
+/// An effect context can only be constructed when starting a stepper,
+/// and transformed using `map_effect_context`.
+pub opaque type EffectContext(s) {
+  EffectContext(state: s)
+}
+
+/// Applies a function to the state of an effect context, returning a new
+/// effect context.
+pub fn use_effect_context(
+  ctx: EffectContext(a),
+  fun: fn(a) -> a,
+) -> EffectContext(a) {
+  EffectContext(fun(ctx.state))
+}
+
+/// Reads the state of an effect context.
+pub fn read_effect_context(ctx: EffectContext(a)) -> a {
+  ctx.state
+}
+
+/// Represents a side effect to be applied with a yet unknown value.
+/// Side effects may be applied multiple times.
+pub opaque type Effect(a) {
+  Effect(id: Int, function: fn(a) -> Nil)
+}
+
+/// Represents a side effect to be performed once with a specific value.
+/// Can only be run outside of the pure context.
+pub type Action(a) {
+  Action(effect: Effect(a), argument: a)
+}
+
+/// Constructs an effect from a function to be called with a value produced later.
+/// Each `Effect` created is unique, even if they use the same function.
+/// This serves two purposes:
+/// 1) Since the same side effect might be expected to be performed a specific
+///    number of times from different contexts, treating each created effect
+///    as unique allows discriminating between them based on equality comparison.
+/// 2) Having a distinct id allows writing nice snapshot tests, where
+///    effects can be identified in the output.
+pub fn new_effect(effect: fn(a) -> Nil) -> Effect(a) {
+  Effect(id.get(), effect)
+}
+
+/// Binds a value to an effect, to be performed by the impure context.
+pub fn bind_effect(effect: Effect(a), arg: a) -> Action(a) {
+  Action(effect, arg)
+}
+
+/// Performs a side effect that was prepared.
+pub fn perform_effect(
+  ctx: EffectContext(s),
+  action: Action(_),
+) -> EffectContext(s) {
+  action.effect.function(action.argument)
+  ctx
+}
+
+/// Get the id of an effect. This should only really be needed for tests.
+pub fn effect_id(effect: Effect(a)) -> Int {
+  effect.id
 }
 
 /// Resets the id counter used for effects and continuations,

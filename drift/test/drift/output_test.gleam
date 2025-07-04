@@ -1,5 +1,4 @@
-import drift.{Continue}
-import drift/effect.{type Action, type Effect}
+import drift.{type Action, type Effect, Continue}
 import gleam/option.{None}
 
 type Input {
@@ -31,5 +30,5 @@ pub fn outputs_are_in_order_test() {
 }
 
 fn discard() -> Effect(a) {
-  effect.from(fn(_) { Nil })
+  drift.new_effect(fn(_) { Nil })
 }

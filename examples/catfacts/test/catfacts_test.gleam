@@ -1,12 +1,11 @@
-import gleam/int
 import birdie
 import catfacts.{type Input, type Output}
 import drift
-import drift/effect
 import drift/record
 import gleam/http
 import gleam/http/request
 import gleam/http/response
+import gleam/int
 import gleam/option
 import gleam/uri
 import gleeunit
@@ -61,7 +60,7 @@ fn format_message(msg: record.Message(Input, Output, String)) {
     record.Input(input) ->
       case input {
         catfacts.FetchFact(complete) ->
-          "Fetch fact #" <> int.to_string(effect.id(complete))
+          "Fetch fact #" <> int.to_string(drift.effect_id(complete))
 
         catfacts.HttpGetCompleted(continuation, result) ->
           "Complete HTTP GET #"
@@ -75,7 +74,7 @@ fn format_message(msg: record.Message(Input, Output, String)) {
       case output {
         catfacts.CompleteFetch(completion) ->
           "Complete fetch #"
-          <> int.to_string(effect.id(completion.effect))
+          <> int.to_string(drift.effect_id(completion.effect))
           <> " with: "
           <> completion.argument
 

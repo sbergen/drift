@@ -1,5 +1,4 @@
-import drift.{type Context, type Step}
-import drift/effect.{type Action, type Effect}
+import drift.{type Action, type Context, type Effect, type Step}
 import drift/js/runtime.{
   type Runtime, type TerminalResult, CallTimedOut, RuntimeStopped,
 }
@@ -118,7 +117,7 @@ fn apply(
   input: #(Effect(a), a),
 ) -> Step(s, #(Effect(a), a), Action(a), e) {
   ctx
-  |> drift.output(effect.bind(input.0, input.1))
+  |> drift.output(drift.bind_effect(input.0, input.1))
   |> drift.continue(state)
 }
 
@@ -134,7 +133,7 @@ pub fn start_with_action_executor(
   next: fn(Context(i, Action(a)), s, i) -> Step(s, i, Action(a), e),
 ) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {
   runtime.start(state, fn(_) { Nil }, next, fn(ctx, action, _) {
-    effect.perform(ctx, action)
+    drift.perform_effect(ctx, action)
     Ok(ctx)
   })
 }

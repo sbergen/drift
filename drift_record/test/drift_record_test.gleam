@@ -1,6 +1,6 @@
 import birdie
 import calculator
-import drift/effect
+import drift
 import drift/record.{discard}
 import echoer
 import gleam/option.{Some}
@@ -128,7 +128,7 @@ fn format_echoer(
           <> " "
           <> string.inspect(times)
           <> " times\n  - Using effect #"
-          <> string.inspect(effect.id(effect))
+          <> string.inspect(drift.effect_id(effect))
         }
       }
 
@@ -138,7 +138,7 @@ fn format_echoer(
           "Reply: "
           <> string.inspect(action.argument)
           <> "\n  - Using effect #"
-          <> string.inspect(effect.id(action.effect))
+          <> string.inspect(drift.effect_id(action.effect))
       }
 
     record.Error(e) -> e

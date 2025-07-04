@@ -1,5 +1,7 @@
-import drift.{type Context, type Step, Continue, Stop, StopWithError}
-import drift/effect.{type Effect}
+import drift.{
+  type Context, type Effect, type EffectContext, type Step, Continue, Stop,
+  StopWithError,
+}
 import gleam/bool
 import gleam/erlang/process.{type Selector, type Subject}
 import gleam/int
@@ -15,7 +17,7 @@ pub opaque type State(state, io, input, output, error) {
   State(
     stepper: drift.Stepper(state, input),
     timer: Option(process.Timer),
-    effect_ctx: effect.Context(io),
+    effect_ctx: EffectContext(io),
     input_selector: Selector(input),
     io_driver: IoDriver(io, input, output),
     self: Subject(Msg(input)),
@@ -37,8 +39,8 @@ pub opaque type IoDriver(state, input, output) {
   IoDriver(
     init: fn() -> state,
     get_selector: fn(state) -> Selector(input),
-    handle_output: fn(effect.Context(state), output) ->
-      Result(effect.Context(state), String),
+    handle_output: fn(EffectContext(state), output) ->
+      Result(EffectContext(state), String),
   )
 }
 
@@ -51,8 +53,8 @@ pub opaque type IoDriver(state, input, output) {
 pub fn using_io(
   init: fn() -> state,
   get_selector: fn(state) -> Selector(input),
-  handle_output: fn(effect.Context(state), output) ->
-    Result(effect.Context(state), String),
+  handle_output: fn(EffectContext(state), output) ->
+    Result(EffectContext(state), String),
 ) -> IoDriver(state, input, output) {
   IoDriver(init, get_selector, handle_output)
 }
@@ -137,7 +139,7 @@ pub fn call_forever(
   sending make_request: fn(Effect(reply)) -> message,
 ) -> reply {
   process.call_forever(actor, fn(reply_to) {
-    make_request(effect.from(process.send(reply_to, _)))
+    make_request(drift.new_effect(process.send(reply_to, _)))
   })
 }
 
@@ -148,7 +150,7 @@ pub fn call(
   sending make_request: fn(Effect(reply)) -> message,
 ) -> reply {
   process.call(actor, timeout, fn(reply_to) {
-    make_request(effect.from(process.send(reply_to, _)))
+    make_request(drift.new_effect(process.send(reply_to, _)))
   })
 }
 
@@ -159,8 +161,6 @@ fn handle_message(
   message: Msg(i),
 ) -> actor.Next(State(s, io, i, o, e), Msg(i)) {
   let now = now()
-  let old_inputs =
-    state.io_driver.get_selector(effect.get_state(state.effect_ctx))
 
   // Either tick or handle input
   let next = case message {
@@ -198,8 +198,8 @@ fn handle_message(
         Ok(effect_ctx) -> {
           let next = actor.continue(State(..state, effect_ctx:))
           let new_inputs =
-            state.io_driver.get_selector(effect.get_state(effect_ctx))
-          use <- bool.guard(new_inputs != old_inputs, next)
+            state.io_driver.get_selector(drift.read_effect_context(effect_ctx))
+          use <- bool.guard(new_inputs != state.input_selector, next)
 
           actor.with_selector(
             next,
