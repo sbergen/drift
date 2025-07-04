@@ -196,11 +196,16 @@ fn handle_message(
 
       case io_result {
         Ok(effect_ctx) -> {
-          let next = actor.continue(State(..state, effect_ctx:))
+          let old_inputs = state.input_selector
           let new_inputs =
             state.io_driver.get_selector(drift.read_effect_context(effect_ctx))
-          use <- bool.guard(new_inputs != state.input_selector, next)
 
+          let next =
+            actor.continue(
+              State(..state, input_selector: new_inputs, effect_ctx:),
+            )
+
+          use <- bool.guard(new_inputs == old_inputs, next)
           actor.with_selector(
             next,
             new_inputs

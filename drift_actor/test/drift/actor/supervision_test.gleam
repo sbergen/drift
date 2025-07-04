@@ -1,6 +1,7 @@
 import drift
 import drift/actor
 import gleam/erlang/process.{type Pid, type Subject}
+import gleam/function
 import gleam/option.{Some}
 import gleam/otp/actor as otp_actor
 import gleam/otp/static_supervisor
@@ -33,11 +34,10 @@ fn init_panicking_child(
   subject: Subject(#(Pid, Subject(Nil))),
 ) -> supervision.ChildSpecification(Subject(Nil)) {
   supervision.worker(fn() {
-    let selector = process.new_selector()
     actor.using_io(
       //
-      fn() { Nil },
-      fn(_) { selector },
+      fn() { process.new_selector() },
+      function.identity,
       fn(ctx, _) { Ok(ctx) },
     )
     |> actor.builder(

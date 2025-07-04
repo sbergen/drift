@@ -1,6 +1,7 @@
 import drift
 import drift/actor
 import gleam/erlang/process
+import gleam/function
 import gleam/io
 import gleam/option.{None, Some}
 import gleam/string
@@ -8,12 +9,11 @@ import gleam/string
 pub fn main() {
   // Start a stepper that adds all the numbers sent to it,
   // until None is encountered
-  // No inputs in this example
-  let selector = process.new_selector()
   let assert Ok(subject) =
     actor.using_io(
-      fn() { Nil },
-      fn(_) { selector },
+      // No inputs in this example
+      fn() { process.new_selector() },
+      function.identity,
       fn(ctx, output) {
         io.println(string.inspect(output))
         Ok(ctx)
