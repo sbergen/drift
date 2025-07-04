@@ -33,9 +33,13 @@ fn init_panicking_child(
   subject: Subject(#(Pid, Subject(Nil))),
 ) -> supervision.ChildSpecification(Subject(Nil)) {
   supervision.worker(fn() {
-    actor.using_io(fn() { #(Nil, process.new_selector()) }, fn(ctx, _) {
-      Ok(ctx)
-    })
+    let selector = process.new_selector()
+    actor.using_io(
+      //
+      fn() { Nil },
+      fn(_) { selector },
+      fn(ctx, _) { Ok(ctx) },
+    )
     |> actor.builder(
       100,
       Nil,

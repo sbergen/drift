@@ -44,10 +44,10 @@ pub fn fetch(client: Catfacts) -> Promise(String) {
 
 /// The main IO driver function for our Erlang cat facts implementation
 fn handle_output(
-  ctx: effect.Context(Nil, Nil),
+  ctx: effect.Context(Nil),
   output: catfacts.Output,
   send: fn(catfacts.Input) -> Nil,
-) -> Result(effect.Context(Nil, Nil), String) {
+) -> Result(effect.Context(Nil), String) {
   case output {
     // side effects must be completed outside of the pure context.
     // For simple side effects, we can just call `effect.perform`.

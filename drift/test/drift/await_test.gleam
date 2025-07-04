@@ -4,7 +4,7 @@ import gleam/string
 import gleeunit/should
 
 pub fn continuation_test() {
-  let #(stepper, _) = drift.new("", Nil, Nil)
+  let #(stepper, _) = drift.new("", Nil)
   let discard = effect.from(fn(_) { Nil })
 
   let assert drift.Continue([FetchString(fetch1)], stepper, _) =

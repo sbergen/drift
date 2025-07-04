@@ -1,7 +1,7 @@
 import drift
 
 pub fn stop_test() {
-  let #(stepper, _) = drift.new(40, Nil, Nil)
+  let #(stepper, _) = drift.new(40, Nil)
   let assert drift.Stop([84], 42) =
     drift.step(stepper, 0, 2, fn(ctx, state, input) {
       let sum = state + input
@@ -12,7 +12,7 @@ pub fn stop_test() {
 }
 
 pub fn stop_with_error_test() {
-  let #(stepper, _) = drift.new(40, Nil, Nil)
+  let #(stepper, _) = drift.new(40, Nil)
   let assert drift.StopWithError([84], "failed") =
     drift.step(stepper, 0, 2, fn(ctx, state, input) {
       let sum = state + input
@@ -23,7 +23,7 @@ pub fn stop_with_error_test() {
 }
 
 pub fn chain_test() {
-  let #(stepper, _) = drift.new(10, Nil, Nil)
+  let #(stepper, _) = drift.new(10, Nil)
   let assert drift.Stop([10, 100], 200) =
     drift.step(stepper, 0, 0, fn(ctx, state, _) {
       use ctx, state <- drift.chain(square(ctx, state))

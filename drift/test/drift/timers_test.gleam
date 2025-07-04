@@ -7,7 +7,7 @@ type Input {
 }
 
 pub fn timers_fire_in_order_test() {
-  let #(stepper, _) = drift.new(Nil, Nil, Nil)
+  let #(stepper, _) = drift.new(Nil, Nil)
   let assert Continue([], stepper, Some(1100)) =
     drift.step(stepper, 1000, Input(0), fn(ctx, state, _) {
       let #(ctx, _) = drift.start_timer(ctx, 200, Input(0))
@@ -38,7 +38,7 @@ pub fn timers_fire_in_order_test() {
 }
 
 pub fn cancel_timer_test() {
-  let #(stepper, _) = drift.new(Nil, Nil, Nil)
+  let #(stepper, _) = drift.new(Nil, Nil)
 
   let assert Continue([], stepper, Some(1200)) =
     drift.step(stepper, 1000, Input(0), fn(ctx, state, _) {
@@ -61,7 +61,7 @@ pub fn cancel_timer_test() {
 }
 
 pub fn cancel_all_timers_test() {
-  let #(stepper, _) = drift.new(Nil, Nil, Nil)
+  let #(stepper, _) = drift.new(Nil, Nil)
 
   let assert Continue([], _, None) =
     drift.step(stepper, 1000, Input(0), fn(ctx, state, _) {
@@ -78,7 +78,7 @@ pub fn cancel_all_timers_test() {
 }
 
 pub fn now_has_step_start_test() {
-  let #(stepper, _) = drift.new(Nil, Nil, Nil)
+  let #(stepper, _) = drift.new(Nil, Nil)
   drift.step(stepper, 42, Input(0), fn(ctx, state, _) {
     drift.now(ctx) |> should.equal(42)
     drift.continue(ctx, state)

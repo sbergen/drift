@@ -2,41 +2,35 @@
 
 import drift/internal/id
 
+// TODO try merging this back into the main module
+
 /// Represents a context in which effects may be applied.
 /// May hold state (or Nil, if no state is needed).
 /// An effect context can only be constructed when starting a stepper,
 /// and transformed using `map_effect_context`.
-pub opaque type Context(s, i) {
-  Context(state: s, inputs: i)
+pub opaque type Context(s) {
+  Context(state: s)
 }
 
 /// Constructs a new effect context.
 /// This should only be done when starting a stepper,
 /// which is why it is internal!
 @internal
-pub fn new_context(state: a, inputs: i) -> Context(a, i) {
-  Context(state, inputs)
+pub fn new_context(state: a) -> Context(a) {
+  Context(state)
+}
+
+/// Extracts the state from the context.
+/// Library consumers should only use `map_context` instead.
+@internal
+pub fn get_state(ctx: Context(a)) -> a {
+  ctx.state
 }
 
 /// Applies a function to the state of an effect context, returning a new
 /// effect context.
-pub fn map_context(ctx: Context(a, i), fun: fn(a) -> a) -> Context(a, i) {
-  Context(fun(ctx.state), ctx.inputs)
-}
-
-/// Returns the inputs of an effect context.
-pub fn inputs(ctx: Context(_, i)) -> i {
-  ctx.inputs
-}
-
-/// Returns true if the inputs of two effect contexts are different.
-pub fn inputs_changed(x: Context(a, b), y: Context(a, b)) {
-  x.inputs != y.inputs
-}
-
-/// Replaces the inputs of an effect context.
-pub fn with_inputs(ctx: Context(a, i), new_inputs: i) -> Context(a, i) {
-  Context(..ctx, inputs: new_inputs)
+pub fn map_context(ctx: Context(a), fun: fn(a) -> a) -> Context(a) {
+  Context(fun(ctx.state))
 }
 
 /// Represents a side effect to be applied with a yet unknown value.
@@ -69,7 +63,7 @@ pub fn bind(effect: Effect(a), arg: a) -> Action(a) {
 }
 
 /// Performs a side effect that was prepared.
-pub fn perform(ctx: Context(s, i), action: Action(_)) -> Context(s, i) {
+pub fn perform(ctx: Context(s), action: Action(_)) -> Context(s) {
   action.effect.function(action.argument)
   ctx
 }

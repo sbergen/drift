@@ -20,7 +20,7 @@ import gleam/option.{type Option, None, Some}
 
 pub fn main() {
   // Start a new stepper with no IO
-  let #(stepper, _effect_ctx) = drift.new(0, Nil, Nil)
+  let #(stepper, _effect_ctx) = drift.new(0, Nil)
 
   // Handle a few step.
   // Drift also supports timers, which aren't use here!

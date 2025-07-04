@@ -15,7 +15,8 @@ pub opaque type State(state, io, input, output, error) {
   State(
     stepper: drift.Stepper(state, input),
     timer: Option(process.Timer),
-    effect_ctx: effect.Context(io, Selector(input)),
+    effect_ctx: effect.Context(io),
+    input_selector: Selector(input),
     io_driver: IoDriver(io, input, output),
     self: Subject(Msg(input)),
     base_selector: Selector(Msg(input)),
@@ -34,9 +35,10 @@ pub opaque type Msg(i) {
 /// Holds the functions required to run the IO for a drift actor.
 pub opaque type IoDriver(state, input, output) {
   IoDriver(
-    init: fn() -> #(state, Selector(input)),
-    handle_output: fn(effect.Context(state, Selector(input)), output) ->
-      Result(effect.Context(state, Selector(input)), String),
+    init: fn() -> state,
+    get_selector: fn(state) -> Selector(input),
+    handle_output: fn(effect.Context(state), output) ->
+      Result(effect.Context(state), String),
   )
 }
 
@@ -45,12 +47,14 @@ pub opaque type IoDriver(state, input, output) {
 /// and should return the initial state and input selector.
 /// The output handler function gets the effect context and output as arguments,
 /// and return the new effect context or an error.
+/// `get_selector` should extract the `Selector` from the io state.
 pub fn using_io(
-  init: fn() -> #(state, Selector(input)),
-  handle_output: fn(effect.Context(state, Selector(input)), output) ->
-    Result(effect.Context(state, Selector(input)), String),
+  init: fn() -> state,
+  get_selector: fn(state) -> Selector(input),
+  handle_output: fn(effect.Context(state), output) ->
+    Result(effect.Context(state), String),
 ) -> IoDriver(state, input, output) {
-  IoDriver(init, handle_output)
+  IoDriver(init, get_selector, handle_output)
 }
 
 /// Starts a simple actor linked to the current process. No supervision.
@@ -83,9 +87,9 @@ pub fn builder(
   make_report: fn(Subject(i)) -> r,
 ) -> actor.Builder(State(s, io, i, o, e), Msg(i), Subject(i)) {
   actor.new_with_initialiser(timeout, fn(self) {
-    let #(io_state, input_selector) = io_driver.init()
+    let io_state = io_driver.init()
 
-    let #(stepper, effect_ctx) = drift.new(state, io_state, input_selector)
+    let #(stepper, effect_ctx) = drift.new(state, io_state)
 
     let inputs = process.new_subject()
     let base_selector =
@@ -93,12 +97,15 @@ pub fn builder(
       |> process.select_map(inputs, HandleInput)
       |> process.select(self)
 
+    let input_selector = io_driver.get_selector(io_state)
+
     let state =
       State(
         stepper:,
         timer: None,
         effect_ctx:,
         io_driver:,
+        input_selector:,
         self:,
         base_selector:,
         handle_input:,
@@ -152,6 +159,8 @@ fn handle_message(
   message: Msg(i),
 ) -> actor.Next(State(s, io, i, o, e), Msg(i)) {
   let now = now()
+  let old_inputs =
+    state.io_driver.get_selector(effect.get_state(state.effect_ctx))
 
   // Either tick or handle input
   let next = case message {
@@ -188,15 +197,13 @@ fn handle_message(
       case io_result {
         Ok(effect_ctx) -> {
           let next = actor.continue(State(..state, effect_ctx:))
-          use <- bool.guard(
-            !effect.inputs_changed(effect_ctx, state.effect_ctx),
-            next,
-          )
+          let new_inputs =
+            state.io_driver.get_selector(effect.get_state(effect_ctx))
+          use <- bool.guard(new_inputs != old_inputs, next)
 
           actor.with_selector(
             next,
-            effect_ctx
-              |> effect.inputs
+            new_inputs
               |> process.map_selector(HandleInput)
               |> process.merge_selector(state.base_selector),
           )

@@ -74,12 +74,12 @@ pub fn start(
   state: s,
   create_io: fn(Runtime(i)) -> io,
   handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-  handle_output: fn(effect.Context(io, Nil), o, fn(i) -> Nil) ->
-    Result(effect.Context(io, Nil), e),
+  handle_output: fn(effect.Context(io), o, fn(i) -> Nil) ->
+    Result(effect.Context(io), e),
 ) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {
   let loop = event_loop.start()
   let runtime = Runtime(loop)
-  let #(stepper, io) = drift.new(state, create_io(runtime), Nil)
+  let #(stepper, io) = drift.new(state, create_io(runtime))
   let send = event_loop.send(loop, _)
   let handle_output = fn(io, output) { handle_output(io, output, send) }
   let result = do_loop(loop, stepper, io, handle_input, handle_output)

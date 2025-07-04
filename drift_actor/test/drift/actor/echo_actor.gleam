@@ -7,11 +7,16 @@ import gleam/erlang/process.{type Subject}
 // Erlang part
 
 pub fn new() -> Subject(Input) {
+  let selector = process.new_selector()
   let assert Ok(actor) =
-    actor.using_io(fn() { #(Nil, process.new_selector()) }, fn(ctx, output) {
-      let ApplyEcho(action) = output
-      Ok(effect.perform(ctx, action))
-    })
+    actor.using_io(
+      fn() { #(Nil, selector) },
+      fn(_) { selector },
+      fn(ctx, output) {
+        let ApplyEcho(action) = output
+        Ok(effect.perform(ctx, action))
+      },
+    )
     |> actor.start(100, State(0, dict.new()), handle_input)
 
   actor

@@ -17,7 +17,7 @@ pub opaque type Catfacts {
 pub fn new() -> Catfacts {
   // The init really shouldn't fail, so we just assert success.
   let assert Ok(actor) =
-    actor.using_io(new_io, handle_output)
+    actor.using_io(new_io, fn(io_state) { io_state.selector }, handle_output)
     |> actor.start(100, catfacts.new(), catfacts.handle_input)
   Catfacts(actor)
 }
@@ -30,20 +30,20 @@ pub fn fetch(client: Catfacts) -> String {
 
 /// This holds the state for our IO context
 type IoState {
-  IoState(self: Subject(catfacts.Input))
+  IoState(self: Subject(catfacts.Input), selector: Selector(catfacts.Input))
 }
 
-fn new_io() -> #(IoState, Selector(catfacts.Input)) {
+fn new_io() -> IoState {
   let self = process.new_subject()
   let selector = process.new_selector() |> process.select(self)
-  #(IoState(self), selector)
+  IoState(self, selector)
 }
 
 /// The main IO driver function for our Erlang cat facts implementation
 fn handle_output(
-  ctx: effect.Context(IoState, process.Selector(catfacts.Input)),
+  ctx: effect.Context(IoState),
   output: catfacts.Output,
-) -> Result(effect.Context(IoState, process.Selector(catfacts.Input)), String) {
+) -> Result(effect.Context(IoState), String) {
   case output {
     // side effects must be completed outside of the pure context.
     // For simple side effects, we can just call `effect.perform`.

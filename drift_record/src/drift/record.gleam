@@ -36,7 +36,7 @@ pub fn new(
   final_state_formatter: Option(fn(s) -> String),
 ) -> Recorder(s, i, o, e) {
   drift.reset_ids()
-  let #(stepper, _effect_ctx) = drift.new(state, Nil, Nil)
+  let #(stepper, _effect_ctx) = drift.new(state, Nil)
   Recorder(
     stepper:,
     apply_input:,

@@ -6,22 +6,11 @@ import gleeunit/should
 pub fn map_context_test() {
   // The state is not inspectable on purpose,
   // so use string.inspect to hack around that.
-  effect.new_context(2, Nil)
+  effect.new_context(2)
   |> effect.map_context(fn(ctx) { 2 * ctx })
   |> string.inspect
   |> string.contains("4")
   |> should.be_true
-}
-
-pub fn inputs_test() {
-  let ctx = effect.new_context(Nil, 0)
-  let ctx2 = effect.with_inputs(ctx, 1)
-
-  effect.inputs_changed(ctx, ctx) |> should.be_false
-  effect.inputs_changed(ctx, ctx2) |> should.be_true
-
-  effect.inputs(ctx) |> should.equal(0)
-  effect.inputs(ctx2) |> should.equal(1)
 }
 
 pub fn from_bind_apply_test() {
@@ -41,7 +30,7 @@ pub fn from_bind_apply_test() {
     })
 
   let action = effect.bind(e, 42)
-  effect.perform(effect.new_context(Nil, Nil), action)
+  effect.perform(effect.new_context(Nil), action)
 
   // We should have a cleanly reset id, which is not incremented by the effect
   id.get() |> should.equal(1)
