@@ -25,8 +25,7 @@ pub fn new() -> Catfacts {
   Catfacts(rt)
 }
 
-/// Wrapper function for performing the fetch in a blocking call,
-/// as is typical for Erlang.
+/// Wrapper function for performing the fetch.
 pub fn fetch(client: Catfacts) -> Promise(String) {
   use result <- promise.await(runtime.call(
     client.runtime,
@@ -42,7 +41,7 @@ pub fn fetch(client: Catfacts) -> Promise(String) {
   })
 }
 
-/// The main IO driver function for our Erlang cat facts implementation
+/// The main IO driver function for our JS cat facts implementation
 fn handle_output(
   ctx: EffectContext(Nil),
   output: catfacts.Output,
@@ -50,7 +49,7 @@ fn handle_output(
 ) -> Result(EffectContext(Nil), String) {
   case output {
     // side effects must be completed outside of the pure context.
-    // For simple side effects, we can just call `effect.perform`.
+    // For simple side effects, we can just call `perform_effect`.
     catfacts.CompleteFetch(complete) -> Ok(drift.perform_effect(ctx, complete))
 
     // This is the main task we need to perform, an HTTP GET.

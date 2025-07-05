@@ -46,7 +46,7 @@ fn handle_output(
 ) -> Result(EffectContext(IoState), String) {
   case output {
     // side effects must be completed outside of the pure context.
-    // For simple side effects, we can just call `effect.perform`.
+    // For simple side effects, we can just call `perform_effect`.
     catfacts.CompleteFetch(complete) -> Ok(drift.perform_effect(ctx, complete))
 
     // This is the main task we need to perform, an HTTP GET.
