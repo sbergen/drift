@@ -16,10 +16,10 @@ pub type EventLoopError {
 
 pub type EventLoop(i)
 
-@external(javascript, "../../../drift_js_external.mjs", "start")
+@external(javascript, "../../../drift_event_loop.mjs", "start")
 pub fn start() -> EventLoop(i)
 
-@external(javascript, "../../../drift_js_external.mjs", "stop")
+@external(javascript, "../../../drift_event_loop.mjs", "stop")
 pub fn stop(loop: EventLoop(i)) -> Nil
 
 pub fn error_if_stopped(
@@ -41,13 +41,13 @@ pub fn error_if_stopped(
 /// Clears any previously set timeout.
 /// Will not return an error if the event loop has been stopped,
 /// use `error_if_stopped` instead.
-@external(javascript, "../../../drift_js_external.mjs", "send")
+@external(javascript, "../../../drift_event_loop.mjs", "send")
 pub fn send(loop: EventLoop(i), input: i) -> Nil
 
 /// Sets the time to the next time `receive` should return `Tick`.
 /// Only one timeout can be set at a time.
 /// Returns an error if a timeout is already set.
-@external(javascript, "../../../drift_js_external.mjs", "set_timeout")
+@external(javascript, "../../../drift_event_loop.mjs", "set_timeout")
 pub fn set_timeout(
   loop: EventLoop(i),
   after: Int,
@@ -64,14 +64,14 @@ pub fn receive(loop: EventLoop(i)) -> Result(Promise(Event(i)), EventLoopError) 
   |> result.map(fn(_) { promise })
 }
 
-@external(javascript, "../../../drift_js_external.mjs", "receive")
+@external(javascript, "../../../drift_event_loop.mjs", "receive")
 fn receive_with_callback(
   loop: EventLoop(i),
   callback: fn(Event(i)) -> Nil,
 ) -> Result(Nil, EventLoopError)
 
-@external(javascript, "../../../drift_js_external.mjs", "register_stop_callback")
+@external(javascript, "../../../drift_event_loop.mjs", "register_stop_callback")
 fn register_stop_callback(loop: EventLoop(i), callback: fn() -> Nil) -> Nil
 
-@external(javascript, "../../../drift_js_external.mjs", "unregister_stop_callback")
+@external(javascript, "../../../drift_event_loop.mjs", "unregister_stop_callback")
 fn unregister_stop_callback(loop: EventLoop(i), callback: fn() -> Nil) -> Nil

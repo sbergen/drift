@@ -1,4 +1,3 @@
-
 import { Ok, Error, } from './gleam.mjs'
 import {
     Tick,
@@ -7,6 +6,9 @@ import {
     AlreadyReceiving,
     AlreadyTicking,
 } from './drift/js/internal/event_loop.mjs';
+import { Channel } from './drift_channel.mjs';
+
+const Nil = undefined;
 
 export function now() {
     return Math.round(performance.now());
@@ -40,9 +42,8 @@ export function set_timeout(loop, after) {
     return loop.setTimeout(after);
 }
 
-export class EventLoop {
-    #queue = [];
-    #handler;
+class EventLoop {
+    #channel = new Channel();
     #timeout;
     #stopped = false;
     #stop_callbacks = new Set();
@@ -53,7 +54,7 @@ export class EventLoop {
         }
 
         this.#stopped = true;
-        this.#queue = null;
+        this.#channel = null;
 
         this.#cancelTimeout();
 
@@ -83,19 +84,14 @@ export class EventLoop {
             return new Error(new Stopped());
         }
 
-        if (this.#handler) {
+        let result = this.#channel.receive(handler);
+        if (result === undefined) {
             return new Error(new AlreadyReceiving());
-        }
-
-        let message;
-        if (message = this.#queue.shift()) {
+        } else if (result) {
             this.#cancelTimeout();
-            this.#dispatch(handler, message);
-        } else {
-            this.#handler = handler;
         }
 
-        return new Ok(undefined);
+        return new Ok(Nil);
     }
 
     send(message) {
@@ -104,12 +100,7 @@ export class EventLoop {
         }
 
         this.#cancelTimeout();
-
-        if (this.#handler) {
-            this.#dispatch(this.#handler, message);
-        } else {
-            this.#queue.push(message);
-        }
+        this.#channel.send(message);
     }
 
     setTimeout(after) {
@@ -122,12 +113,7 @@ export class EventLoop {
         }
 
         this.#timeout = setTimeout(() => this.send(new Tick()), after);
-        return new Ok(undefined);
-    }
-
-    #dispatch(handler, message) {
-        this.#handler = null;
-        handler(message);
+        return new Ok(Nil);
     }
 
     #cancelTimeout() {
