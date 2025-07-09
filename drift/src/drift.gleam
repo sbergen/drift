@@ -84,6 +84,17 @@ pub fn output_many(context: Context(i, o), outputs: List(o)) -> Context(i, o) {
   list.fold(outputs, context, output)
 }
 
+/// Returns a new context with the given output added, if it was `Some`
+pub fn output_optional(
+  context: Context(i, o),
+  optional_output: Option(o),
+) -> Context(i, o) {
+  case optional_output {
+    None -> context
+    Some(value) -> output(context, value)
+  }
+}
+
 /// A shorthand for outputting effects to be performed.
 pub fn perform(
   context: Context(i, o),

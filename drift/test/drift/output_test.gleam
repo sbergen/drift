@@ -1,5 +1,5 @@
 import drift.{type Action, type Effect, Continue}
-import gleam/option.{None}
+import gleam/option.{None, Some}
 
 type Input {
   Input(Int)
@@ -13,7 +13,7 @@ type Output {
 pub fn outputs_are_in_order_test() {
   let #(stepper, _) = drift.new(Nil, Nil)
   let assert Continue(
-    [Plain(1), ActionOutput(_), Plain(2), Plain(3), Plain(4)],
+    [Plain(1), ActionOutput(_), Plain(2), Plain(3), Plain(4), Plain(5)],
     _,
     None,
   ) =
@@ -22,7 +22,9 @@ pub fn outputs_are_in_order_test() {
       |> drift.output(Plain(1))
       |> drift.perform(ActionOutput, discard(), 42)
       |> drift.output_many([Plain(2), Plain(3)])
-      |> drift.output(Plain(4))
+      |> drift.output_optional(None)
+      |> drift.output_optional(Some(Plain(4)))
+      |> drift.output(Plain(5))
       |> drift.continue(state)
     })
 
