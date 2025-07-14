@@ -19,6 +19,10 @@ export function receive(channel, callback) {
     }
 }
 
+export function cancel_receive(channel) {
+    channel.cancel_receive()
+}
+
 export class Channel {
     #queue = [];
     #handler;
@@ -39,6 +43,10 @@ export class Channel {
             this.#handler = handler;
             return false;
         }
+    }
+
+    cancel_receive() {
+        this.#handler = null;
     }
 
     send(message) {
