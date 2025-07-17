@@ -53,8 +53,6 @@ fn handle_output(
     catfacts.CompleteFetch(complete) -> Ok(drift.perform_effect(ctx, complete))
 
     // This is the main task we need to perform, an HTTP GET.
-    // We make the errors fatal here for simplicity, but in real situations,
-    // it would be better to report the errors to the stepper.
     catfacts.HttpSend(request:, continuation:) -> {
       // Fire and forget the HTTP request
       {
@@ -63,10 +61,14 @@ fn handle_output(
           |> promise.try_await(fetch.read_text_body),
         )
 
+        // Once we have the result, we report it back with `send`,
+        // which will run the next step.
         let result = result.map_error(response, string.inspect)
         send(catfacts.HttpGetCompleted(continuation, result))
       }
 
+      // We return ok with the unchanged context to continue operation.
+      // Any errors returned from here would terminate the stepper.
       Ok(ctx)
     }
   }

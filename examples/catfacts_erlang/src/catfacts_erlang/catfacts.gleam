@@ -51,18 +51,30 @@ fn handle_output(
 
     // This is the main task we need to perform, an HTTP GET.
     catfacts.HttpSend(request:, continuation:) -> {
-      let result =
-        httpc.send(request)
-        |> result.map_error(string.inspect)
-
-      // Report errors to the stepper.
-      // Returning an error here would terminate the actor.
+      // We return success here. Returning an error would terminate the actor.
       Ok({
+        // The state stored in the context can be accessed with use_effect_context.
         use state <- drift.use_effect_context(ctx)
-        process.send(
-          state.self,
-          catfacts.HttpGetCompleted(continuation, result),
-        )
+
+        // If we did a blocking request here, it would prevent the stepper
+        // from handling any further messages, so we spawn a process for the request.
+        // This is simplified example code, where the child process running into
+        // an error would bring the whole actor down!
+        // You'd probably want to handle this very differently in non-example code.
+        process.spawn(fn() {
+          let result =
+            httpc.send(request)
+            |> result.map_error(string.inspect)
+
+          // Once the request is complete, we send a message to the subject
+          // that is linked to the input selector, which will run the next step.
+          process.send(
+            state.self,
+            catfacts.HttpGetCompleted(continuation, result),
+          )
+        })
+
+        // We didn't modify the sate, so we just return it.
         state
       })
     }
