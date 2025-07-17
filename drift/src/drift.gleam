@@ -85,7 +85,7 @@ pub fn output_many(context: Context(i, o), outputs: List(o)) -> Context(i, o) {
 }
 
 /// Returns a new context with the given output added, if it was `Some`
-pub fn output_optional(
+pub fn output_option(
   context: Context(i, o),
   optional_output: Option(o),
 ) -> Context(i, o) {
