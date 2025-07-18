@@ -25,10 +25,10 @@ export function cancel_receive(channel) {
 
 export function try_receive(channel) {
     let result = channel.try_receive();
-    if (result === undefined) {
-        return new Error(Nil);
+    if (result.hasValue) {
+        return new Ok(result.value);
     } else {
-        return new Ok(result);
+        return new Error(Nil);
     }
 }
 
@@ -44,8 +44,8 @@ export class Channel {
             return undefined;
         }
 
-        let message;
-        if (message = this.#queue.shift()) {
+        if (this.#queue.length > 0) {
+            let message = this.#queue.shift();
             this.#dispatch(handler, message);
             return true;
         } else {
@@ -55,7 +55,11 @@ export class Channel {
     }
 
     try_receive() {
-        return this.#queue.shift();
+        if (this.#queue.length > 0) {
+            return { hasValue: true, value: this.#queue.shift() };
+        } else {
+            return { hasValue: false };
+        }
     }
 
     cancel_receive() {

@@ -57,7 +57,7 @@ pub fn receive_timeout_test() {
   use result <- promise.await(channel.receive(channel, 1))
   assert result == Error(channel.ReceiveTimeout)
 
-  // Can receive  after
+  // Can receive after
   channel.send(channel, 42)
   use result <- promise.map(channel.receive(channel, 10))
   assert result == Ok(42)
@@ -78,4 +78,15 @@ pub fn try_receive_test() {
   assert channel.try_receive(channel) == Ok(1)
   assert channel.try_receive(channel) == Ok(2)
   assert channel.try_receive(channel) == Error(Nil)
+}
+
+pub fn nil_channel_test() {
+  let channel = channel.new()
+  channel.send(channel, Nil)
+  assert channel.try_receive(channel) == Ok(Nil)
+  assert channel.try_receive(channel) == Error(Nil)
+
+  channel.send(channel, Nil)
+  use result <- promise.map(channel.receive(channel, 10))
+  assert result == Ok(Nil)
 }
