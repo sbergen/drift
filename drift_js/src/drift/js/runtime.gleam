@@ -152,5 +152,5 @@ fn stop(
   promise.resolve(result)
 }
 
-@external(javascript, "../../drift_js_external.mjs", "now")
+@external(javascript, "../../drift_event_loop.mjs", "now")
 pub fn now() -> Int
