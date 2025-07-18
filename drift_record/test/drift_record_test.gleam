@@ -100,12 +100,6 @@ pub fn effects_id_reset_test() {
   |> birdie.snap("Effect ids should be reset to 1")
 }
 
-pub fn foo_test() {
-  let a = format_calculator
-  let b = format_calculator
-  echo a == b
-}
-
 fn format_calculator(
   msg: record.Message(calculator.Input, calculator.Output, String),
 ) -> String {
