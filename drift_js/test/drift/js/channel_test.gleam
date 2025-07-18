@@ -69,3 +69,13 @@ pub fn double_receive_test() {
   use result <- promise.map(channel.receive(channel, 100))
   assert result == Error(channel.AlreadyReceiving)
 }
+
+pub fn try_receive_test() {
+  let channel = channel.new()
+  assert channel.try_receive(channel) == Error(Nil)
+  channel.send(channel, 1)
+  channel.send(channel, 2)
+  assert channel.try_receive(channel) == Ok(1)
+  assert channel.try_receive(channel) == Ok(2)
+  assert channel.try_receive(channel) == Error(Nil)
+}

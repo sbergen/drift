@@ -1,4 +1,4 @@
-import gleam/javascript/promise
+import gleam/javascript/promise.{type Promise}
 import gleam/result
 
 /// An unbounded single-consumer channel with synchronous sending
@@ -23,9 +23,7 @@ pub fn new() -> Channel(a)
 /// and it will resolve synchronously for errors.
 /// Returning the error in the promise provides a more ergonomic interface,
 /// even though it's always synchronous.
-pub fn receive_forever(
-  from channel: Channel(a),
-) -> promise.Promise(Result(a, Nil)) {
+pub fn receive_forever(from channel: Channel(a)) -> Promise(Result(a, Nil)) {
   let #(promise, resolve) = promise.start()
   case channel_receive(channel, resolve) {
     Ok(_) -> promise.map(promise, Ok)
@@ -41,7 +39,7 @@ pub fn receive_forever(
 pub fn receive(
   from channel: Channel(a),
   within timeout: Int,
-) -> promise.Promise(Result(a, ReceiveError)) {
+) -> Promise(Result(a, ReceiveError)) {
   let receive =
     receive_forever(channel)
     |> promise.map(result.replace_error(_, AlreadyReceiving))
@@ -55,6 +53,11 @@ pub fn receive(
 
   promise.race_list([receive, timeout])
 }
+
+/// Tries to receive a value synchronously,
+/// and returns an error if no values are available.
+@external(javascript, "../../drift_channel.mjs", "try_receive")
+pub fn try_receive(channel: Channel(a)) -> Result(a, Nil)
 
 /// Sends a value to the channel, either completing a promise,
 /// or queuing the value for future receives.

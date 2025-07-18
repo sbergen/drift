@@ -23,6 +23,15 @@ export function cancel_receive(channel) {
     channel.cancel_receive()
 }
 
+export function try_receive(channel) {
+    let result = channel.try_receive();
+    if (result === undefined) {
+        return new Error(Nil);
+    } else {
+        return new Ok(result);
+    }
+}
+
 export class Channel {
     #queue = [];
     #handler;
@@ -43,6 +52,10 @@ export class Channel {
             this.#handler = handler;
             return false;
         }
+    }
+
+    try_receive() {
+        return this.#queue.shift();
     }
 
     cancel_receive() {
