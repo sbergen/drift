@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  test-drift:
     runs-on: ubuntu-latest
 
     defaults:
@@ -19,8 +19,116 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.10.0"
+          gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam test
+      - run: gleam format --check src test
+
+  test-drift-actor:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: drift_actor
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          gleam-version: "1.11.1"
+          rebar3-version: "3"
+      - run: gleam deps download
+      - run: gleam test
+      - run: gleam format --check src test
+
+  test-drift-js:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: drift_js
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          gleam-version: "1.11.1"
+          rebar3-version: "3"
+      - run: gleam deps download
+      - run: gleam test
+      - run: gleam format --check src test
+
+  test-drift-record:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: drift_record
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          gleam-version: "1.11.1"
+          rebar3-version: "3"
+      - run: gleam deps download
+      - run: gleam test
+      - run: gleam format --check src test
+
+  test-examples-catfacts:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: examples/catfacts
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          gleam-version: "1.11.1"
+          rebar3-version: "3"
+      - run: gleam deps download
+      - run: gleam test
+      - run: gleam format --check src test
+
+  build-examples-catfacts-erlang:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: examples/catfacts_erlang
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          gleam-version: "1.11.1"
+          rebar3-version: "3"
+      - run: gleam deps download
+      - run: gleam build
+      - run: gleam format --check src test
+
+  build-examples-catfacts-js:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: examples/catfacts_js
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          gleam-version: "1.11.1"
+          rebar3-version: "3"
+      - run: gleam deps download
+      - run: gleam build
       - run: gleam format --check src test
