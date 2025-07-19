@@ -1,7 +1,7 @@
 # drift_record
 
-[![Package Version](https://img.shields.io/hexpm/v/drift_recorder)](https://hex.pm/packages/drift_recorder)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/drift_recorder/)
+[![Package Version](https://img.shields.io/hexpm/v/drift_record)](https://hex.pm/packages/drift_record)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/drift_record/)
 
 Record logs for `drift` steppers, and use them in snapshot tests!
 
