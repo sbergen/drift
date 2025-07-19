@@ -1,3 +1,6 @@
+//// A channel, similar to a `gleam/erlang` `Subject`.
+//// Provided for convenience, not required to use `drift_js`.
+
 import gleam/javascript/promise.{type Promise}
 import gleam/result
 
@@ -20,7 +23,7 @@ pub fn new() -> Channel(a)
 /// Returns a promise that will resolve with a value when the channel has one available,
 /// or an error, if a receive is already active.
 /// The promise may resolve synchronously if a value is already available,
-/// and it will resolve synchronously for errors.
+/// and will resolve synchronously for errors.
 /// Returning the error in the promise provides a more ergonomic interface,
 /// even though it's always synchronous.
 pub fn receive_forever(from channel: Channel(a)) -> Promise(Result(a, Nil)) {
@@ -31,11 +34,11 @@ pub fn receive_forever(from channel: Channel(a)) -> Promise(Result(a, Nil)) {
   }
 }
 
-/// Returns a promise that will resolve with a value when the channel has one available,
-/// or an error if the timeout (in milliseconds) is reached before a value is available
-/// or a receive is already active.
+/// Returns a promise that will resolve with a value when the channel has one available.
+/// The promise will resolve with an error if the timeout (in milliseconds) is
+/// reached before a value is available, or if a receive is already active.
 /// The promise may resolve synchronously if a value is already available,
-/// and it will resolve synchronously if a receive is already active.
+/// and will resolve synchronously if a receive is already active.
 pub fn receive(
   from channel: Channel(a),
   within timeout: Int,
@@ -55,7 +58,7 @@ pub fn receive(
 }
 
 /// Tries to receive a value synchronously,
-/// and returns an error if no values are available.
+/// and returns an error if no value is available.
 @external(javascript, "../../drift_channel.mjs", "try_receive")
 pub fn try_receive(channel: Channel(a)) -> Result(a, Nil)
 

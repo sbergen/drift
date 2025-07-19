@@ -1,3 +1,5 @@
+//// Wrap a drift stepper with an event loop on JavaScript.
+
 import drift.{type Context, type Effect, type EffectContext, type Step}
 import drift/js/internal/event_loop.{
   type EventLoop, type EventLoopError, HandleInput, Tick,
@@ -9,11 +11,11 @@ import gleam/option.{None, Some}
 import gleam/result
 
 /// Holds the event loop for running a stepper.
-pub opaque type Runtime(i) {
-  Runtime(loop: EventLoop(i))
+pub opaque type Runtime(input) {
+  Runtime(loop: EventLoop(input))
 }
 
-/// Errors that can happen when using `call` (or `call_forever`).
+/// Errors that can happen when using `call` or `call_forever`.
 pub type CallError {
   /// The runtime stopped while a call was active.
   RuntimeStopped
@@ -152,5 +154,7 @@ fn stop(
   promise.resolve(result)
 }
 
+/// Returns a monotonic timestamp in milliseconds.
+/// The reference point (value 0) is not defined.
 @external(javascript, "../../drift_event_loop.mjs", "now")
 pub fn now() -> Int
