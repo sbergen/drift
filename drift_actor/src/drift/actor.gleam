@@ -1,3 +1,5 @@
+//// Wraps a pure functional core defined with `drift` as an OTP actor.
+
 import drift.{
   type Context, type Effect, type EffectContext, type Step, Continue, Stop,
   StopWithError,
@@ -48,8 +50,8 @@ pub opaque type IoDriver(state, input, output) {
 /// The init function will be called from the actor process,
 /// and should return the initial state and input selector.
 /// The output handler function gets the effect context and output as arguments,
-/// and return the new effect context or an error.
-/// `get_selector` should extract the `Selector` from the io state.
+/// and returns the new effect context or an error.
+/// `get_selector` should extract the `Selector` for inputs from the io state.
 pub fn using_io(
   init: fn() -> state,
   get_selector: fn(state) -> Selector(input),
@@ -132,7 +134,6 @@ pub fn builder(
   |> actor.on_message(handle_message)
 }
 
-/// This function will be called from the actor process
 /// Similar to `process.call_forver`, but dispatches to the stepper. 
 pub fn call_forever(
   actor: Subject(message),
