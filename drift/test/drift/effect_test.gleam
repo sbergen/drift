@@ -46,14 +46,10 @@ pub fn effect_uniqueness_test() {
 
   let also_effect_a = effect_a
 
-  { effect_a == effect_a } |> should.be_true()
-  { effect_b == effect_b } |> should.be_true()
-  { effect_c == effect_c } |> should.be_true()
-  { effect_a == also_effect_a } |> should.be_true()
-
-  { effect_a == effect_b } |> should.be_false()
-  { effect_a == effect_c } |> should.be_false()
-  { effect_b == effect_c } |> should.be_false()
+  assert effect_a == also_effect_a
+  assert effect_a != effect_b
+  assert effect_a != effect_c
+  assert effect_b != effect_c
 }
 
 pub fn effect_id_test() {
