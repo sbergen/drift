@@ -2,11 +2,12 @@ import drift
 import gleam/option.{type Option, None, Some}
 
 pub fn main() {
-  // Start a new stepper with no IO
+  // Start a new stepper with no IO/effects
   let #(stepper, _effect_ctx) = drift.new(0, Nil)
 
-  // Handle a few step.
-  // Drift also supports timers, which aren't use here!
+  // Handle a few steps.
+  // Drift also supports timers and promise-like continuations.
+  // Since we aren't using timers, we pass 0 as the timestamp.
   let assert drift.Continue([40], stepper, None) =
     drift.step(stepper, 0, Some(40), sum_numbers)
 

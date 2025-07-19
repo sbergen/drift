@@ -1,12 +1,6 @@
-//// `drift` is a library for creating highly asynchronous "functional cores",
-//// which can be wrapped with different I/O and timer implementations,
-//// depending on the environment they are running in.
-//// The idea is that a stepper, which holds state and timers, can be updated
-//// in steps, producing a new stepper, the next timer due time, and a list of
-//// effects to be applied in the context it is running in.
-//// `drift` provides a bunch of data types and functions to make handling
-//// this easier.
-//// Execution of the stepper should stop with the final effects applied.
+//// Define pure functional cores, which can be wrapped to handle side effects.
+//// The state of the core is represented with a `Stepper`, which for each step,
+//// handles an input and produces a new state and outputs.
 
 import drift/internal/id
 import drift/internal/timer
