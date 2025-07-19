@@ -4,7 +4,7 @@
 packages = [
   { name = "argv", version = "1.0.2", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "BA1FF0929525DEBA1CE67256E5ADF77A7CDDFE729E3E3F57A5BDCAA031DED09D" },
   { name = "birdie", version = "1.3.0", build_tools = ["gleam"], requirements = ["argv", "edit_distance", "filepath", "glance", "gleam_community_ansi", "gleam_stdlib", "justin", "rank", "simplifile", "term_size", "trie_again"], otp_app = "birdie", source = "hex", outer_checksum = "425916385B6CD82A58F54CC39605262A524B169746FC9AD9C799BC76E88F7AF3" },
-  { name = "drift", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], source = "local", path = "../drift" },
+  { name = "drift", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "drift", source = "hex", outer_checksum = "5820441E6AC2FE454D63ACD233358D05BEF99BB7304A7E44D604C7E8574A9DAE" },
   { name = "edit_distance", version = "2.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "edit_distance", source = "hex", outer_checksum = "A1E485C69A70210223E46E63985FA1008B8B2DDA9848B7897469171B29020C05" },
   { name = "envoy", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "envoy", source = "hex", outer_checksum = "95FD059345AA982E89A0B6E2A3BF1CF43E17A7048DCD85B5B65D3B9E4E39D359" },
   { name = "exemplify", version = "1.0.0", build_tools = ["gleam"], requirements = ["envoy", "gleam_regexp", "gleam_stdlib", "simplifile"], source = "local", path = "../dev/exemplify" },
@@ -26,7 +26,7 @@ packages = [
 
 [requirements]
 birdie = { version = ">= 1.3.0 and < 2.0.0" }
-drift = { path = "../drift" }
+drift = { version = ">= 1.0.0 and < 2.0.0" }
 exemplify = { path = "../dev/exemplify" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
