@@ -2,11 +2,16 @@ import drift.{type Action, type Context, type Effect, type Step}
 import drift/js/runtime.{
   type Runtime, type TerminalResult, CallTimedOut, RuntimeStopped,
 }
+import exemplify
 import gleam/javascript/promise.{type Promise, await}
 import gleeunit
 
 pub fn main() -> Nil {
   gleeunit.main()
+}
+
+pub fn check_or_update_readme_test() {
+  exemplify.update_or_check()
 }
 
 pub fn run_result_not_terminated_test() -> Promise(Nil) {

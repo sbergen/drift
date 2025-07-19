@@ -1,1 +1,0 @@
-../../drift/test/readme_example_test.gleam

@@ -3,12 +3,17 @@ import calculator
 import drift
 import drift/record.{discard}
 import echoer
+import exemplify
 import gleam/option.{Some}
 import gleam/string
 import gleeunit
 
 pub fn main() -> Nil {
   gleeunit.main()
+}
+
+pub fn check_or_update_readme_test() {
+  exemplify.update_or_check()
 }
 
 pub fn small_time_advance_test() {
