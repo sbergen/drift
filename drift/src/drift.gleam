@@ -7,7 +7,7 @@ import drift/internal/timer
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-/// A monotonically increasing timestamp in milliseconds.
+/// A monotonically increasing timestamp, in milliseconds.
 pub type Timestamp =
   Int
 
@@ -90,6 +90,12 @@ pub fn output_option(
 }
 
 /// A shorthand for outputting effects to be performed.
+/// Example:
+/// ```
+/// context
+///  |> drift.perform(SomeOutput, effect, state)
+///  |> drift.continue(state)
+/// ```
 pub fn perform(
   context: Context(i, o),
   make_output: fn(Action(a)) -> o,
@@ -116,25 +122,25 @@ pub fn chain(
   f: fn(Context(i, o), s) -> Step(s, i, o, e),
 ) -> Step(s, i, o, e) {
   case step {
-    ContinueStep(effects, state) -> f(effects, state)
+    ContinueStep(context, state) -> f(context, state)
     _ -> step
   }
 }
 
-/// Continues stepping by linking the given state to the context.
-/// All effects in the context will be applied.
+/// Ends the current step, signalling to continue running the stepper.
+/// All effects in the context should be applied by the wrapping runtime.
 pub fn continue(context: Context(i, o), state: s) -> Step(s, i, o, e) {
   ContinueStep(context, state)
 }
 
 /// Terminates the stepper with the final state without error.
-/// All effects in the context will still be applied.
+/// All effects in the context should still be applied by the wrapping runtime.
 pub fn stop(context: Context(i, o), state: s) -> Step(s, i, o, _) {
   StopStep(context.outputs, state)
 }
 
 /// Terminates the stepper with an error.
-/// All effects in the context will still be applied.
+/// All effects in the context should still be applied by the wrapping runtime.
 pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
   StopStepWithError(context.outputs, error)
 }
@@ -143,13 +149,21 @@ pub fn stop_with_error(context: Context(i, o), error: e) -> Step(_, i, o, e) {
 /// which will be called with a new context and state when resumed.
 /// Allows handing external inputs of one type in a generic way in multiple
 /// different use cases.
-pub opaque type Continuation(a, s, i, o, e) {
-  Continuation(id: Int, function: fn(Context(i, o), s, a) -> Step(s, i, o, e))
+pub opaque type Continuation(a, state, input, output, error) {
+  Continuation(
+    id: Int,
+    function: fn(Context(input, output), state, a) ->
+      Step(state, input, output, error),
+  )
 }
 
-/// Completes the current step with the given state and adds the output
+/// Completes the current step with the given state, and adds the output
 /// constructed by `make_output`. `continuation` will be executed with the new
 /// context and state when it is resumed.
+/// Designed to be used with `use`, e.g.
+/// ```
+/// use context, state, response <- drift.await(context, state, SomeOutput)
+/// ```
 pub fn await(
   context: Context(i, o),
   state: s,
@@ -190,7 +204,7 @@ pub fn new(state: s, io_state: io) -> #(Stepper(s, i), EffectContext(io)) {
 /// after applying one or more steps.
 pub type Next(state, input, output, error) {
   /// Execution of the stepper should continue,
-  /// effects should be applied, and if due_time is `Some`,
+  /// effects should be applied, and if `due_time` is `Some`,
   /// `tick` should be called at that time.
   Continue(
     outputs: List(output),
@@ -237,20 +251,13 @@ pub fn step(
   input: i,
   apply: fn(Context(i, o), s, i) -> Step(s, i, o, e),
 ) -> Next(s, i, o, e) {
-  stepper
-  |> begin_step(now)
-  |> chain(fn(context, state) { apply(context, state, input) })
+  Context(now, stepper.timers, [])
+  |> apply(stepper.state, input)
   |> end_step()
 }
 
-/// Starts a new step
-pub fn begin_step(state: Stepper(s, i), now: Timestamp) -> Step(s, i, _, _) {
-  let effects = Context(now, state.timers, [])
-  ContinueStep(effects, state.state)
-}
-
 /// Ends the current step, yielding the next state.
-pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
+fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
   case step {
     ContinueStep(Context(_, timers, effects), state) ->
       Continue(
@@ -269,7 +276,7 @@ pub fn end_step(step: Step(s, i, o, e)) -> Next(s, i, o, e) {
 /// Represents a context in which effects may be applied.
 /// May hold state (or Nil, if no state is needed).
 /// An effect context can only be constructed when starting a stepper,
-/// and transformed using `map_effect_context`.
+/// and transformed using `use_effect_context`.
 pub opaque type EffectContext(s) {
   EffectContext(state: s)
 }
