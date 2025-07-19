@@ -1,3 +1,7 @@
+//// Records the inputs an outputs of a drift stepper,
+//// given a pre-defined set of inputs. 
+//// Intended for snapshot testing.
+
 import drift.{type Context, type Effect, type Step, type Timestamp}
 import gleam/bool
 import gleam/int
@@ -78,8 +82,8 @@ pub fn time_advance(
   }
 }
 
-/// Flushes all previous state, and replaces it with a message containing
-/// the provided description.
+/// Flushes all previous recorded inputs and outputs,
+/// and replaces the log with a message containing the provided description.
 pub fn flush(
   recorder: Recorder(s, i, o, e),
   what: String,
@@ -95,6 +99,7 @@ pub fn to_log(recorder: Recorder(s, i, o, e)) -> String {
 
 /// Applies the given function that produces the next state of the recorder
 /// from the outputs of the previously executed step.
+/// This is mostly required for testing continuations.
 pub fn use_latest_outputs(
   recorder: Recorder(s, i, o, e),
   with: fn(Recorder(s, i, o, e), List(o)) -> Recorder(s, i, o, e),
