@@ -26,9 +26,9 @@ You might want to _avoid_ drift if:
 
 ## Related packages
 
-* `drift_actor` wraps a core written with drift in an OTP actor.
-* `drift_js` wraps a core written with drift in an event loop on the JS target.
-* `drift_record` contains utilities to record the inputs and 
+* [`drift_actor`](https://hexdocs.pm/drift_actor/) wraps a core written with drift in an OTP actor.
+* [`drift_js`](https://hexdocs.pm/drift_js/) wraps a core written with drift in an event loop on the JS target.
+* [`drift_record`](https://hexdocs.pm/drift_record/) contains utilities to record the inputs and 
   outputs of a drift core in a snapshot-testing friendly manner.
 
 ## Examples
