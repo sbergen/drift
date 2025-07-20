@@ -7,17 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [2.0.0] - 2025-07-20
+## [1.0.1] - 2025-17-20
 
-### Changed
-- Revamp the poorly designed API for starting actors.
-  Now supports named subjects, is safer, and should support future extensions better.
+### Fixed
+- Fix bug in `channel`, where a previous `receive` (with a timeout) could
+  prevent later `receive` calls from functioning properly.
 
 ## [1.0.0] - 2025-07-19
 
 ### Added
 - Initial release with basic functionality.
 
-[Unreleased]: https://github.com/sbergen/drift/compare/drift_actor-v2.0.0...HEAD
-[2.0.0]: https://github.com/sbergen/drift/releases/tag/drift_actor-v2.0.0
+[Unreleased]: https://github.com/sbergen/drift/compare/drift_js-v1.0.1...HEAD
+[1.0.1]: https://github.com/sbergen/drift/releases/tag/drift_js-v1.0.1
 [1.0.0]: https://github.com/sbergen/drift/releases/tag/v1.0.0

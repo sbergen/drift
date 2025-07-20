@@ -1,10 +1,10 @@
 name = "drift_js"
-version = "1.0.0"
+version = "1.0.1"
 target = "javascript"
 
 description = "Run drift steppers on JavaScript targets."
 licences = ["Apache-2.0"]
-repository = { type = "github", user = "sbergen", repo = "drift", path = "drift_js" }
+repository = { type = "github", user = "sbergen", repo = "drift", path = "drift_js", tag-prefix = "drift_js-" }
 internal_modules = ["drift/js/internal/*"]
 
 [dependencies]
