@@ -2,6 +2,7 @@ import drift.{type Action, type Effect}
 import drift/actor
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
+import gleam/function
 
 // Erlang part
 
@@ -16,9 +17,10 @@ pub fn new() -> Subject(Input) {
         Ok(drift.perform_effect(ctx, action))
       },
     )
-    |> actor.start(100, State(0, dict.new()), handle_input)
+    |> actor.with_stepper(State(0, dict.new()), handle_input)
+    |> actor.start(100, function.identity)
 
-  actor
+  actor.data
 }
 
 // Generic part

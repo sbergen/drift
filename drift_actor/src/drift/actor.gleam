@@ -14,8 +14,7 @@ import gleam/result
 import gleam/string
 
 /// The state of the wrapping actor.
-/// Should not be directly used, but must be public for supporting actor builders.
-pub opaque type State(state, io, input, output, error) {
+type State(state, io, input, output, error) {
   State(
     stepper: drift.Stepper(state, input),
     timer: Option(process.Timer),
@@ -30,8 +29,7 @@ pub opaque type State(state, io, input, output, error) {
 }
 
 /// The message type of the wrapping actor.
-/// Should not be directly used, but must be public for supporting actor builders.
-pub opaque type Msg(i) {
+type Msg(i) {
   Tick
   HandleInput(i)
 }
@@ -53,88 +51,112 @@ pub opaque type IoDriver(state, input, output) {
 /// and returns the new effect context or an error.
 /// `get_selector` should extract the `Selector` for inputs from the io state.
 pub fn using_io(
-  init: fn() -> state,
-  get_selector: fn(state) -> Selector(input),
-  handle_output: fn(EffectContext(state), output) ->
+  with_initial_state init: fn() -> state,
+  selecting_inputs get_selector: fn(state) -> Selector(input),
+  handling_outputs_with handle_output: fn(EffectContext(state), output) ->
     Result(EffectContext(state), String),
 ) -> IoDriver(state, input, output) {
   IoDriver(init, get_selector, handle_output)
 }
 
-/// Starts a simple actor linked to the current process. No supervision.
-/// On success, messages sent to the returned `Subject` will be handled
-/// by the given input handling function, and the actor will take care of
-/// all state transitions.
-pub fn start(
-  io_driver: IoDriver(io, i, o),
-  timeout: Int,
-  state: s,
-  handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-) -> Result(Subject(i), actor.StartError) {
-  builder(io_driver, timeout, state, handle_input, None, fn(_) { Nil })
-  |> actor.start()
-  |> result.map(fn(init) { init.data })
+pub opaque type Builder(s, io, i, o, e) {
+  Builder(
+    io_driver: IoDriver(io, i, o),
+    initial_state: s,
+    handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
+    name: Option(process.Name(i)),
+  )
 }
 
-/// Behaves like `start`, except that it provides an actor builder that allows
-/// more configurability for advanced use cases, like supervision.
-/// NOTE: Do not reconfigure `on_message`!
-/// 
-/// If provided, `report_to` will be sent a message returned by `make_report`
-/// when the actor is initialized.
-pub fn builder(
+/// Configures the drift stepper to use with the actor,
+/// this is the second mandatory step after configuring the IO,
+/// after which other options are optional.
+pub fn with_stepper(
   io_driver: IoDriver(io, i, o),
+  with_initial_state initial_state: s,
+  handling_inputs_with handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
+) {
+  Builder(io_driver:, initial_state:, handle_input:, name: None)
+}
+
+/// Configures the actor to use a named process and subject for the inputs.
+/// This allows using supervision and not invalidating previous subjects
+/// on restarts.
+pub fn named(
+  builder: Builder(s, io, i, o, e),
+  name: process.Name(i),
+) -> Builder(s, io, i, o, e) {
+  Builder(..builder, name: Some(name))
+}
+
+/// Starts the actor with the provided configuration, timeout and possible
+/// extra initialization.
+/// The extra initialization will happen as part of the actor initialization,
+/// and contributes to the timeout limit.
+/// If you want to do asynchronous initialization, consider sending a message
+/// to another process.
+pub fn start(
+  builder: Builder(s, io, i, o, e),
   timeout: Int,
-  state: s,
-  handle_input: fn(Context(i, o), s, i) -> Step(s, i, o, e),
-  report_to: Option(Subject(r)),
-  make_report: fn(Subject(i)) -> r,
-) -> actor.Builder(State(s, io, i, o, e), Msg(i), Subject(i)) {
+  init: fn(Subject(i)) -> result,
+) -> Result(actor.Started(result), actor.StartError) {
   actor.new_with_initialiser(timeout, fn(self) {
-    let io_state = io_driver.init()
+    use inputs <- result.try(create_input_subject(builder.name))
+    let io_state = builder.io_driver.init()
+    let #(stepper, effect_ctx) = drift.new(builder.initial_state, io_state)
 
-    let #(stepper, effect_ctx) = drift.new(state, io_state)
-
-    let inputs = process.new_subject()
     let base_selector =
       process.new_selector()
       |> process.select_map(inputs, HandleInput)
       |> process.select(self)
 
-    let input_selector = io_driver.get_selector(io_state)
+    let input_selector = builder.io_driver.get_selector(io_state)
 
     let state =
       State(
         stepper:,
         timer: None,
         effect_ctx:,
-        io_driver:,
+        io_driver: builder.io_driver,
         input_selector:,
         self:,
         base_selector:,
-        handle_input:,
+        handle_input: builder.handle_input,
       )
 
-    let init =
+    let initialised =
       actor.initialised(state)
       |> actor.selecting(
         input_selector
         |> process.map_selector(HandleInput)
         |> process.merge_selector(base_selector),
       )
-      |> actor.returning(inputs)
+      |> actor.returning(init(inputs))
 
-    case report_to {
-      Some(subject) -> process.send(subject, make_report(inputs))
-      None -> Nil
-    }
-
-    Ok(init)
+    Ok(initialised)
   })
   |> actor.on_message(handle_message)
+  |> actor.start()
 }
 
-/// Similar to `process.call_forver`, but dispatches to the stepper. 
+fn create_input_subject(
+  name: Option(process.Name(i)),
+) -> Result(Subject(i), String) {
+  case name {
+    Some(name) -> {
+      use _ <- result.try(
+        process.register(process.self(), name)
+        |> result.replace_error("name already registered"),
+      )
+      Ok(process.named_subject(name))
+    }
+    None -> {
+      Ok(process.new_subject())
+    }
+  }
+}
+
+/// Similar to `process.call_forever`, but dispatches to the stepper. 
 pub fn call_forever(
   actor: Subject(message),
   sending make_request: fn(Effect(reply)) -> message,

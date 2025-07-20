@@ -48,7 +48,7 @@ pub fn input_change_test() {
 
 fn start_actor(inputs: Subject(Subject(Input))) -> Subject(Input) {
   // Actor that sums inputs and can switch input subjects
-  let assert Ok(actor_subject) =
+  let assert Ok(started) =
     actor.using_io(
       // the io state is the input selector
       fn() {
@@ -74,7 +74,7 @@ fn start_actor(inputs: Subject(Subject(Input))) -> Subject(Input) {
         })
       },
     )
-    |> actor.start(100, 0, fn(ctx, state, input) {
+    |> actor.with_stepper(0, fn(ctx, state, input) {
       case input {
         Sum(value) -> ctx |> drift.continue(state + value)
 
@@ -90,6 +90,7 @@ fn start_actor(inputs: Subject(Subject(Input))) -> Subject(Input) {
         }
       }
     })
+    |> actor.start(100, function.identity)
 
-  actor_subject
+  started.data
 }

@@ -8,13 +8,12 @@
 ```sh
 gleam add gleam_erlang@1
 gleam add drift@1
-gleam add drift_actor@1
+gleam add drift_actor@2
 ```
 ```gleam
 import drift
 import drift/actor
 import gleam/erlang/process
-import gleam/function
 import gleam/io
 import gleam/option.{None, Some}
 import gleam/string
@@ -22,25 +21,34 @@ import gleam/string
 pub fn main() {
   // Start a stepper that adds all the numbers sent to it,
   // until None is encountered
-  let assert Ok(subject) =
+  let assert Ok(started) =
     actor.using_io(
-      // No inputs in this example
-      fn() { process.new_selector() },
-      function.identity,
-      fn(ctx, output) {
+      // No external inputs in this example 
+      with_initial_state: fn() { process.new_selector() },
+      selecting_inputs: fn(selector) { selector },
+      // Print all the outputs
+      handling_outputs_with: fn(io_state, output) {
         io.println(string.inspect(output))
-        Ok(ctx)
+        Ok(io_state)
       },
     )
-    |> actor.start(100, 0, fn(ctx, state, input) {
-      case input {
-        Some(input) -> drift.continue(ctx, state + input)
-        None ->
-          ctx
-          |> drift.output(state)
-          |> drift.stop(state)
-      }
-    })
+    // This defines the pure part:
+    |> actor.with_stepper(
+      with_initial_state: 0,
+      handling_inputs_with: fn(ctx, state, input) {
+        case input {
+          Some(input) -> drift.continue(ctx, state + input)
+          None ->
+            ctx
+            |> drift.output(state)
+            |> drift.stop(state)
+        }
+      },
+    )
+    // Start the actor without wrapping the subject
+    |> actor.start(100, fn(subject) { subject })
+
+  let subject = started.data
 
   process.send(subject, Some(40))
   process.send(subject, Some(2))
