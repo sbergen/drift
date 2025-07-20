@@ -8,7 +8,7 @@
 ```sh
 gleam add gleam_erlang@1
 gleam add drift@1
-gleam add drift_actor@1
+gleam add drift_actor@2
 ```
 ```gleam
 import drift
