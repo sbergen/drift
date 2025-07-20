@@ -16,10 +16,15 @@ pub opaque type Catfacts {
 /// Starts a new cat facts actor.
 pub fn new() -> Catfacts {
   // The init really shouldn't fail, so we just assert success.
-  let assert Ok(actor) =
-    actor.using_io(new_io, fn(io_state) { io_state.selector }, handle_output)
-    |> actor.start(100, catfacts.new(), catfacts.handle_input)
-  Catfacts(actor)
+  let assert Ok(started) =
+    actor.using_io(
+      new_io,
+      selecting_inputs: fn(io_state) { io_state.selector },
+      handling_outputs_with: handle_output,
+    )
+    |> actor.with_stepper(catfacts.new(), catfacts.handle_input)
+    |> actor.start(100, Catfacts)
+  started.data
 }
 
 /// Wrapper function for performing the fetch in a blocking call,
