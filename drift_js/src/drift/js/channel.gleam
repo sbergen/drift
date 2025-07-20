@@ -43,14 +43,16 @@ pub fn receive(
   from channel: Channel(a),
   within timeout: Int,
 ) -> Promise(Result(a, ReceiveError)) {
-  let receive =
-    receive_forever(channel)
-    |> promise.map(result.replace_error(_, AlreadyReceiving))
+  let #(promise, resolve) = promise.start()
+  let receive = case channel_receive(channel, resolve) {
+    Ok(_) -> promise.map(promise, Ok)
+    Error(_) -> promise.resolve(Error(AlreadyReceiving))
+  }
 
   let timeout =
     promise.wait(timeout)
     |> promise.map(fn(_) {
-      cancel_receive(channel)
+      cancel_receive(channel, resolve)
       Error(ReceiveTimeout)
     })
 
@@ -74,4 +76,4 @@ fn channel_receive(
 ) -> Result(Bool, Nil)
 
 @external(javascript, "../../drift_channel.mjs", "cancel_receive")
-fn cancel_receive(channel: Channel(a)) -> Nil
+fn cancel_receive(channel: Channel(a), callback: fn(a) -> Nil) -> Nil

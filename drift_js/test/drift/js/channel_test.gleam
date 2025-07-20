@@ -61,6 +61,15 @@ pub fn receive_timeout_test() {
   channel.send(channel, 42)
   use result <- promise.map(channel.receive(channel, 10))
   assert result == Ok(42)
+
+  // Can receive after previous timeout expires
+  let pending = channel.receive(channel, 20)
+  use _ <- promise.await(promise.wait(10))
+  channel.send(channel, 43)
+
+  use result <- promise.map(pending)
+  assert result == Ok(43)
+  Nil
 }
 
 pub fn double_receive_test() {

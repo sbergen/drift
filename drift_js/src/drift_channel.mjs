@@ -19,8 +19,8 @@ export function receive(channel, callback) {
     }
 }
 
-export function cancel_receive(channel) {
-    channel.cancel_receive()
+export function cancel_receive(channel, callback) {
+    channel.cancel_receive(callback);
 }
 
 export function try_receive(channel) {
@@ -62,8 +62,10 @@ export class Channel {
         }
     }
 
-    cancel_receive() {
-        this.#handler = null;
+    cancel_receive(callback) {
+        if (this.#handler === callback) {
+            this.#handler = null;
+        }
     }
 
     send(message) {
