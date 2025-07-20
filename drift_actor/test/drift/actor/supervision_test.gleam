@@ -29,6 +29,8 @@ pub fn supervision_test() {
   // We should be able to use the same named subject again,
   // to kill the newly spawned child.
   process.send(inputs, Nil)
+  let assert Ok(_) = process.receive(children, 10)
+    as "Child should restart again"
   assert !process.is_alive(pid2)
 
   process.send_exit(supervisor.pid)
