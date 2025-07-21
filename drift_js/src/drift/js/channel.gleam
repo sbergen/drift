@@ -2,7 +2,6 @@
 //// Provided for convenience, not required to use `drift_js`.
 
 import gleam/javascript/promise.{type Promise}
-import gleam/result
 
 /// An unbounded single-consumer channel with synchronous sending
 /// and asynchronous receiving.

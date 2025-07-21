@@ -133,7 +133,7 @@ fn stop(ctx: Context(Bool, o), state: s, stop: Bool) -> Step(s, Bool, o, e) {
   }
 }
 
-pub fn start_with_action_executor(
+fn start_with_action_executor(
   state: s,
   next: fn(Context(i, Action(a)), s, i) -> Step(s, i, Action(a), e),
 ) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {
