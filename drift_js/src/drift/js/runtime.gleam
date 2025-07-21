@@ -43,7 +43,8 @@ pub fn send(runtime: Runtime(i), input: i) -> Nil {
 
 /// Sends an input to be handled by the runtime after a delay (in milliseconds).
 /// Since triggering the receive from `send` will be scheduled as a microtask,
-/// using `send_after` with a delay of 0 can be used to 
+/// using `send_after` with a delay of 0 can be used to handle an input as
+/// a task instead.
 pub fn send_after(runtime: Runtime(i), delay: Int, input: i) -> Nil {
   event_loop.send_after(runtime.loop, delay, input)
 }
