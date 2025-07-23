@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- Adds the `send_after` function to `runtime`, which allows sending messages
+  with a delay, or scheduling them on the task queue with a delay of zero.
+
 ## [1.0.1] - 2025-17-20
 
 ### Fixed
