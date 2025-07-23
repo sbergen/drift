@@ -167,5 +167,4 @@ fn stop(
 /// Returns a monotonic timestamp in milliseconds.
 /// The reference point (value 0) is not defined.
 @external(javascript, "../../drift_event_loop.mjs", "now")
-@internal
 pub fn now() -> Int
