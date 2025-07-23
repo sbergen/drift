@@ -1,9 +1,10 @@
 import drift.{type Action, type Context, type Effect, type Step}
 import drift/js/runtime.{
-  type Runtime, type TerminalResult, CallTimedOut, RuntimeStopped,
+  type Runtime, type TerminalResult, CallTimedOut, RuntimeStopped, Terminated,
 }
 import exemplify
 import gleam/javascript/promise.{type Promise, await}
+import gleam/list
 import gleeunit
 
 pub fn main() -> Nil {
@@ -112,6 +113,32 @@ pub fn call_timeout_test() {
   promise.resolve(Nil)
 }
 
+pub fn send_after_0_is_delayed_test() {
+  use <- timeout(100)
+
+  let #(result, rt) =
+    start_without_io([], fn(ctx, state, input) {
+      let state = [input, ..state]
+      case list.length(state) {
+        4 -> drift.stop(ctx, state)
+        _ -> drift.continue(ctx, state)
+      }
+    })
+
+  runtime.send_after(rt, 0, "after1")
+  runtime.send(rt, "immediate1")
+  runtime.send_after(rt, 0, "after2")
+  runtime.send(rt, "immediate2")
+  use result <- promise.await(result)
+
+  // Reverse list for clearer assertion
+  let assert Terminated(result) = result
+  let result = list.reverse(result)
+  assert result == ["immediate1", "immediate2", "after1", "after2"]
+
+  promise.resolve(Nil)
+}
+
 fn noop(ctx: Context(i, o), state: s, _: i) -> Step(s, i, o, e) {
   ctx |> drift.continue(state)
 }
@@ -133,7 +160,7 @@ fn stop(ctx: Context(Bool, o), state: s, stop: Bool) -> Step(s, Bool, o, e) {
   }
 }
 
-pub fn start_with_action_executor(
+fn start_with_action_executor(
   state: s,
   next: fn(Context(i, Action(a)), s, i) -> Step(s, i, Action(a), e),
 ) -> #(Promise(TerminalResult(s, e)), Runtime(i)) {

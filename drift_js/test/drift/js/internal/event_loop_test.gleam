@@ -2,6 +2,7 @@ import drift/js/internal/event_loop.{
   type Event, type EventLoop, AlreadyReceiving, AlreadyTicking, HandleInput,
   Stopped, Tick,
 }
+import drift/js/runtime
 import gleam/javascript/promise.{type Promise, await}
 
 pub fn receive_when_empty_test() {
@@ -80,6 +81,24 @@ pub fn send_cancels_timeout_test() {
   let assert Ok(result) = event_loop.receive(loop)
   use result <- await(timeout(result, 20))
   let assert Error(Nil) = result as "no timeout should be triggered"
+
+  promise.resolve(Nil)
+}
+
+pub fn send_after_test() {
+  let loop = event_loop.start()
+  let start = runtime.now()
+
+  event_loop.send_after(loop, 10, 42)
+
+  let assert Ok(result) = event_loop.receive(loop)
+  use result <- await(timeout(result, 20))
+  assert result == Ok(HandleInput(42))
+
+  // Assert reasonably accurate delay
+  let elapsed = runtime.now() - start
+  assert elapsed >= 10
+  assert elapsed <= 12
 
   promise.resolve(Nil)
 }

@@ -38,6 +38,10 @@ export function send(loop, message) {
     return loop.send(new HandleInput(message));
 }
 
+export function send_after(loop, delay, message) {
+    setTimeout(() => send(loop, message), delay);
+}
+
 export function set_timeout(loop, after) {
     return loop.setTimeout(after);
 }

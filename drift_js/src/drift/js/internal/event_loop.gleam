@@ -44,6 +44,10 @@ pub fn error_if_stopped(
 @external(javascript, "../../../drift_event_loop.mjs", "send")
 pub fn send(loop: EventLoop(i), input: i) -> Nil
 
+/// Uses `setTimeout` to call `send` after a delay.
+@external(javascript, "../../../drift_event_loop.mjs", "send_after")
+pub fn send_after(loop: EventLoop(i), delay: Int, input: i) -> Nil
+
 /// Sets the time to the next time `receive` should return `Tick`.
 /// Only one timeout can be set at a time.
 /// Returns an error if a timeout is already set.
