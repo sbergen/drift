@@ -3,7 +3,7 @@
 
 import gleam/javascript/promise.{type Promise}
 
-/// An unbounded single-consumer channel with synchronous sending
+/// An unbounded single-consumer channel with non-blocking sending
 /// and asynchronous receiving.
 /// Intended to be used similarly to a `gleam/erlang` `Subject`.
 pub type Channel(a)
