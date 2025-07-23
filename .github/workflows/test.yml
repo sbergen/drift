@@ -22,6 +22,7 @@ jobs:
           gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
+      - run: gleam build --warnings-as-errors
       - run: gleam test
       - run: gleam format --check src test
 
@@ -40,6 +41,7 @@ jobs:
           gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
+      - run: gleam build --warnings-as-errors
       - run: gleam test
       - run: gleam format --check src test
 
@@ -58,6 +60,7 @@ jobs:
           gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
+      - run: gleam build --warnings-as-errors
       - run: gleam test
       - run: gleam format --check src test
 
@@ -76,6 +79,7 @@ jobs:
           gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
+      - run: gleam build --warnings-as-errors
       - run: gleam test
       - run: gleam format --check src test
 
@@ -94,6 +98,7 @@ jobs:
           gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
+      - run: gleam build --warnings-as-errors
       - run: gleam test
       - run: gleam format --check src test
 
@@ -112,7 +117,7 @@ jobs:
           gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
-      - run: gleam build
+      - run: gleam build --warnings-as-errors
       - run: gleam format --check src test
 
   build-examples-catfacts-js:
@@ -130,5 +135,5 @@ jobs:
           gleam-version: "1.11.1"
           rebar3-version: "3"
       - run: gleam deps download
-      - run: gleam build
+      - run: gleam build --warnings-as-errors
       - run: gleam format --check src test
