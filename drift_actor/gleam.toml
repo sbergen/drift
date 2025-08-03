@@ -1,5 +1,5 @@
 name = "drift_actor"
-version = "2.0.0"
+version = "2.0.1"
 
 description = "Run drift steppers as an OTP actor on Erlang."
 licences = ["Apache-2.0"]

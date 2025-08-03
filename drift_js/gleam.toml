@@ -1,5 +1,5 @@
 name = "drift_js"
-version = "1.0.1"
+version = "1.1.0"
 target = "javascript"
 
 description = "Run drift steppers on JavaScript targets."
