@@ -1,18 +1,23 @@
+import checkmark
 import drift.{type Action, type Context, type Effect, type Step}
 import drift/js/runtime.{
   type Runtime, type TerminalResult, CallTimedOut, RuntimeStopped, Terminated,
 }
-import exemplify
+import envoy
 import gleam/javascript/promise.{type Promise, await}
 import gleam/list
 import gleeunit
+import simplifile
 
 pub fn main() -> Nil {
   gleeunit.main()
 }
 
 pub fn check_or_update_readme_test() {
-  exemplify.update_or_check()
+  checkmark.new(simplifile.read, simplifile.write)
+  |> checkmark.file("README.md")
+  |> checkmark.should_contain_contents_of("test/example.gleam", tagged: "gleam")
+  |> checkmark.check_or_update(envoy.get("GITHUB_WORKFLOW") == Error(Nil))
 }
 
 pub fn run_result_not_terminated_test() -> Promise(Nil) {

@@ -1,14 +1,21 @@
 name = "drift"
-version = "1.0.0"
+version = "1.0.1"
 
 description = """Define pure functional cores in target-agnostic Gleam, \
 which can wrapped to run on both the Erlang and JS targets."""
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "sbergen", repo = "drift", path = "drift" }
 
+[documentation]
+pages = [
+  { title = "Changelog", path = "changelog.html", source = "./CHANGELOG.md" },
+]
+
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
-exemplify = { path = "../dev/exemplify" }
+checkmark = ">= 2.0.0 and < 3.0.0"
+simplifile = ">= 2.3.0 and < 3.0.0"
+envoy = ">= 1.0.2 and < 2.0.0"

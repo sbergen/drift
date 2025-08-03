@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.0.1] - 2025-08-03
+
+### Fixed
+- Replaces a local dev dependency with one from hex.
+  This works around a bug that currently makes the LSP misbehave when
+  browsing the package source.
+
 ## [2.0.0] - 2025-07-20
 
 ### Changed
@@ -18,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release with basic functionality.
 
-[Unreleased]: https://github.com/sbergen/drift/compare/drift_actor-v2.0.0...HEAD
+[Unreleased]: https://github.com/sbergen/drift/compare/drift_actor-v2.0.1...HEAD
+[2.0.1]: https://github.com/sbergen/drift/releases/tag/drift_actor-v2.0.1
 [2.0.0]: https://github.com/sbergen/drift/releases/tag/drift_actor-v2.0.0
 [1.0.0]: https://github.com/sbergen/drift/releases/tag/v1.0.0
