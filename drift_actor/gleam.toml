@@ -5,6 +5,11 @@ description = "Run drift steppers as an OTP actor on Erlang."
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "sbergen", repo = "drift", path = "drift_actor", tag-prefix = "drift_actor-" }
 
+[documentation]
+pages = [
+  { title = "Changelog", path = "changelog.html", source = "./CHANGELOG.md" },
+]
+
 [dependencies]
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"
 gleam_otp = ">= 1.0.0 and < 2.0.0"

@@ -6,6 +6,11 @@ which can wrapped to run on both the Erlang and JS targets."""
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "sbergen", repo = "drift", path = "drift" }
 
+[documentation]
+pages = [
+  { title = "Changelog", path = "changelog.html", source = "./CHANGELOG.md" },
+]
+
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 
