@@ -1,5 +1,5 @@
 name = "drift_record"
-version = "1.0.0"
+version = "1.0.1"
 
 description = "Record logs for drift steppers, and use them in snapshot tests."
 licences = ["Apache-2.0"]
