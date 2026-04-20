@@ -2,6 +2,7 @@ import drift/actor
 import drift/actor/echo_actor
 import drift/actor/process_helper
 import gleam/erlang/process
+import gleam/int
 import gleam/list
 import gleam/string
 import gleeunit/should
@@ -27,13 +28,14 @@ pub fn delayed_call_test() {
 pub fn concurrent_calls_test() {
   let a = echo_actor.new()
 
-  list.range(0, 100)
-  |> list.map(fn(i) {
-    process.spawn(fn() {
-      let str = string.inspect(i)
-      let result = actor.call(a, 50, echo_actor.EchoAfter(str, 1, _))
-      result |> should.equal(str)
-    })
+  int.range(0, 100, [], fn(processes, i) {
+    let process =
+      process.spawn(fn() {
+        let str = string.inspect(i)
+        let result = actor.call(a, 50, echo_actor.EchoAfter(str, 1, _))
+        result |> should.equal(str)
+      })
+    [process, ..processes]
   })
   |> list.each(process_helper.wait_for_process)
 }
