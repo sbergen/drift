@@ -14,7 +14,7 @@ target = "javascript"
 # https://gleam.run/writing-gleam/gleam-toml/.
 
 [dependencies]
-gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 drift = { path = "../../drift" }
 drift_js = { path = "../../drift_js" }
 catfacts = { path = "../catfacts" }

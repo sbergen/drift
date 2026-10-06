@@ -19,7 +19,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.11.1"
+          gleam-version: "1.19.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam build --warnings-as-errors
@@ -38,7 +38,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.11.1"
+          gleam-version: "1.19.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam build --warnings-as-errors
@@ -57,7 +57,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.11.1"
+          gleam-version: "1.19.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam build --warnings-as-errors
@@ -76,7 +76,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.11.1"
+          gleam-version: "1.19.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam build --warnings-as-errors
@@ -95,7 +95,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.11.1"
+          gleam-version: "1.19.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam build --warnings-as-errors
@@ -114,7 +114,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.11.1"
+          gleam-version: "1.19.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam build --warnings-as-errors
@@ -132,7 +132,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.1.2"
-          gleam-version: "1.11.1"
+          gleam-version: "1.19.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: gleam build --warnings-as-errors

@@ -18,7 +18,7 @@ gleam_erlang = ">= 1.0.0 and < 2.0.0"
 drift = { path = "../../drift" }
 drift_actor = { path = "../../drift_actor" }
 catfacts = { path = "../catfacts" }
-gleam_httpc = ">= 4.1.1 and < 5.0.0"
+gleam_httpc = ">= 2.0.0 and < 6.0.0"
 gleam_http = ">= 4.0.0 and < 5.0.0"
 
 [dev-dependencies]
