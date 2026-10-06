@@ -62,7 +62,9 @@ pub fn set_timeout(
 /// If any timeout was set before the promise is resolved,
 /// it will be canceled when the promise resolves.
 /// Only one receive can be active at a time.
-pub fn receive(loop: EventLoop(i)) -> Result(Promise(Event(i)), EventLoopError) {
+pub fn receive(
+  loop: EventLoop(i),
+) -> Result(Promise(Event(i)), EventLoopError) {
   let #(promise, resolve) = promise.start()
   receive_with_callback(loop, resolve)
   |> result.map(fn(_) { promise })
